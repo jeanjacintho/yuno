@@ -21,7 +21,7 @@ export function GridPattern({
   squares,
   className,
   ...props
-}: GridPatternProps) {
+}: GridPatternProps): React.JSX.Element {
   const id = useId()
 
   return (
