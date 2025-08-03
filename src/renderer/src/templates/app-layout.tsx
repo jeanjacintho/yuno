@@ -1,8 +1,8 @@
+import { AppSidebar } from '@renderer/components/app-sidebar'
+import { SiteHeader } from '@renderer/components/site-header'
+import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import React from 'react'
 import { Outlet } from 'react-router-dom'
-import { SidebarInset, SidebarProvider } from './ui/sidebar'
-import { SiteHeader } from './site-header'
-import { AppSidebar } from './app-sidebar'
 
 const AppLayout = (): React.ReactElement => {
   return (

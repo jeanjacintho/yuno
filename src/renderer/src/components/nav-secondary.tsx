@@ -15,8 +15,11 @@ export function NavSecondary({
 }: {
   items: {
     title: string
-    url: string
+    secondtitle?: string
+    url?: string
     icon: LucideIcon
+    class?: string
+    onClick?: () => void
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>): React.JSX.Element {
   return (
@@ -25,11 +28,25 @@ export function NavSecondary({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild size="sm">
-                <a href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </a>
+              <SidebarMenuButton
+                asChild={!!item.url}
+                size="sm"
+                onClick={item.onClick}
+                className={item.class}
+              >
+                {item.url ? (
+                  <a href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                    <span className="ml-auto">{item.secondtitle}</span>
+                  </a>
+                ) : (
+                  <a className="flex gap-2">
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.title}</span>
+                    <span className="ml-auto">{item.secondtitle}</span>
+                  </a>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

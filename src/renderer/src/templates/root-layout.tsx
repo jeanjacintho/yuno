@@ -1,7 +1,7 @@
+import { GridPattern } from '@renderer/components/ui/grid-pattern'
+import { cn } from '@renderer/lib/utils'
 import React from 'react'
 import { Outlet } from 'react-router-dom'
-import { GridPattern } from './components/ui/grid-pattern'
-import { cn } from './lib/utils'
 
 const RootLayout = (): React.ReactElement => {
   return (
