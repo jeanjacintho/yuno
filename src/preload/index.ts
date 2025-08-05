@@ -5,6 +5,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   selectFolder: async () => {
     return await ipcRenderer.invoke('select-folder')
+  },
+  listFolderContents: async (folderPath: string) => {
+    return await ipcRenderer.invoke('list-folder-contents', folderPath)
   }
 }
 

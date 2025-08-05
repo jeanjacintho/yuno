@@ -75,7 +75,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
             <div className="flex w-full justify-between items-center">
               <div>
                 <Label>Select a course folder</Label>
-                <p id="folderPathRoute">{folderPath}</p>
+                <p className="text-sm text-muted-foreground">{folderPath}</p>
               </div>
               <Button onClick={() => handleSelectFolder()} disabled={isPending}>
                 select folder

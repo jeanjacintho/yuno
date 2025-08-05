@@ -2,11 +2,16 @@ import { AppSidebar } from '@renderer/components/app-sidebar'
 import { SiteHeader } from '@renderer/components/site-header'
 import { SidebarInset, SidebarProvider } from '@renderer/components/ui/sidebar'
 import React from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 
 const AppLayout = (): React.ReactElement => {
+  const location = useLocation()
+  const isCoursesPage = location.pathname === '/courses'
+  const defaultOpen = !isCoursesPage
+
   return (
     <SidebarProvider
+      defaultOpen={defaultOpen}
       style={
         {
           '--sidebar-width': '19rem'

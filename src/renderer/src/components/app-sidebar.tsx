@@ -1,17 +1,5 @@
 import * as React from 'react'
-import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  Gem,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Presentation,
-  Send,
-  Settings2
-} from 'lucide-react'
+import { Command, Gem, LayoutDashboard, Presentation, Send, Settings2 } from 'lucide-react'
 
 import {
   Sidebar,
@@ -20,11 +8,9 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider
+  SidebarMenuItem
 } from '@renderer/components/ui/sidebar'
 import { NavMain } from './nav-main'
-import { NavTertiary } from './nav-tertiary'
 import { NavUser } from './nav-user'
 import { NavSecondary } from './nav-secondary'
 import SettingsDialog from '../pages/settings/settings'
@@ -37,10 +23,15 @@ const data = {
   },
   navMain: [
     {
+      title: 'Dashboard',
+      url: '/dashboard',
+      icon: LayoutDashboard,
+      isActive: true
+    },
+    {
       title: 'Courses',
       url: '/courses',
-      icon: Presentation,
-      isActive: true
+      icon: Presentation
     }
   ],
   navSecondary: [
@@ -66,7 +57,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = React.useState(false)
 
-  const navSecondaryWithHandlers = data.navSecondary.map(item => {
+  const navSecondaryWithHandlers = data.navSecondary.map((item) => {
     if (item.title === 'Settings') {
       return {
         ...item,
@@ -78,7 +69,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>): 
 
   return (
     <>
-      <Sidebar variant="floating" {...props}>
+      <Sidebar variant="floating" collapsible="icon" {...props}>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>

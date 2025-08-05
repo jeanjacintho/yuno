@@ -2,6 +2,10 @@ import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import * as fs from 'node:fs'
+import path from 'node:path'
+import { fileTypeFromFile } from 'file-type'
+import getVideoDuration from 'get-video-duration'
 
 function createWindow(): void {
   // Create the browser window.
@@ -79,4 +83,68 @@ ipcMain.handle('select-folder', async () => {
     return null
   }
   return result.filePaths[0]
+})
+
+ipcMain.handle('list-folder-contents', async (event, folderPath: string) => {
+  const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
+
+  async function getFolderContentsRecursively(currentPath: string): Promise<any[]> {
+    try {
+      const items = fs.readdirSync(currentPath)
+      const folderItems = []
+
+      for (const item of items) {
+        if (item.startsWith('._')) {
+          continue
+        }
+
+        const itemPath = path.join(currentPath, item)
+        const stats = fs.statSync(itemPath)
+
+        if (stats.isDirectory()) {
+          const subContents = await getFolderContentsRecursively(itemPath)
+          folderItems.push({
+            name: item,
+            path: itemPath,
+            type: 'folder',
+            contents: subContents
+          })
+        } else if (stats.isFile()) {
+          const ext = path.extname(item).toLowerCase()
+          if (videoExtensions.includes(ext) && stats.size > 102400) {
+            try {
+              const type = await fileTypeFromFile(itemPath)
+
+              if (type && type.mime && type.mime.startsWith('video/')) {
+                let duration: number | undefined
+                try {
+                  duration = await getVideoDuration(itemPath)
+                } catch (durationError) {}
+
+                folderItems.push({
+                  name: item,
+                  path: itemPath,
+                  type: 'video',
+                  duration: duration
+                })
+              }
+            } catch (e) {
+              continue
+            }
+          }
+        }
+      }
+      return folderItems
+    } catch (error) {
+      console.error('Error in getFolderContentsRecursively:', error)
+      return []
+    }
+  }
+
+  try {
+    const result = await getFolderContentsRecursively(folderPath)
+    return result
+  } catch (error) {
+    return []
+  }
 })
