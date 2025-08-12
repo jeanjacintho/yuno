@@ -7,6 +7,17 @@ import path from 'node:path'
 import { fileTypeFromFile } from 'file-type'
 import getVideoDuration from 'get-video-duration'
 
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+if (process.platform === 'win32') {
+  app.setAppUserModelId(app.getName())
+}
+
+// Set DATABASE_URL in production
+if (!is.dev) {
+  const prodDbPath = path.join(app.getPath('userData'), 'prod.db')
+  process.env.DATABASE_URL = `file:${prodDbPath}`
+}
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -85,13 +96,21 @@ ipcMain.handle('select-folder', async () => {
   return result.filePaths[0]
 })
 
-ipcMain.handle('list-folder-contents', async (event, folderPath: string) => {
+interface FolderItem {
+  name: string
+  path: string
+  type: 'folder' | 'video'
+  contents?: FolderItem[]
+  duration?: number
+}
+
+ipcMain.handle('list-folder-contents', async (event, folderPath: string): Promise<FolderItem[]> => {
   const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
 
-  async function getFolderContentsRecursively(currentPath: string): Promise<any[]> {
+  async function getFolderContentsRecursively(currentPath: string): Promise<FolderItem[]> {
     try {
       const items = fs.readdirSync(currentPath)
-      const folderItems = []
+      const folderItems: FolderItem[] = []
 
       for (const item of items) {
         if (item.startsWith('._')) {
@@ -119,16 +138,19 @@ ipcMain.handle('list-folder-contents', async (event, folderPath: string) => {
                 let duration: number | undefined
                 try {
                   duration = await getVideoDuration(itemPath)
-                } catch (durationError) {}
+                } catch (durationError) {
+                  console.error(`Could not get duration for ${itemPath}:`, durationError)
+                }
 
                 folderItems.push({
                   name: item,
                   path: itemPath,
                   type: 'video',
-                  duration: duration
+                  duration
                 })
               }
             } catch (e) {
+              console.error(`Could not get file type for ${itemPath}:`, e)
               continue
             }
           }
@@ -145,6 +167,7 @@ ipcMain.handle('list-folder-contents', async (event, folderPath: string) => {
     const result = await getFolderContentsRecursively(folderPath)
     return result
   } catch (error) {
+    console.error('Error listing folder contents:', error)
     return []
   }
 })
