@@ -4,19 +4,24 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import { fileTypeFromFile } from 'file-type'
 import getVideoDuration from 'get-video-duration'
+import { DatabaseOperations } from './database-operations'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (process.platform === 'win32') {
   app.setAppUserModelId(app.getName())
 }
 
-// Set DATABASE_URL in production
-if (!is.dev) {
-  const prodDbPath = path.join(app.getPath('userData'), 'prod.db')
-  process.env.DATABASE_URL = `file:${prodDbPath}`
-}
+// Set DATABASE_URL based on environment
+const dbPath = is.dev
+  ? path.join(__dirname, '../../prisma/dev.db')
+  : path.join(app.getPath('userData'), 'prod.db')
+
+process.env.DATABASE_URL = `file:${dbPath}`
+console.log('Database URL:', process.env.DATABASE_URL)
+console.log('Database exists:', require('fs').existsSync(dbPath))
 
 function createWindow(): void {
   // Create the browser window.
@@ -104,70 +109,104 @@ interface FolderItem {
   duration?: number
 }
 
-ipcMain.handle('list-folder-contents', async (event, folderPath: string): Promise<FolderItem[]> => {
-  const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
+ipcMain.handle(
+  'list-folder-contents',
+  async (_event, folderPath: string): Promise<FolderItem[]> => {
+    const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
 
-  async function getFolderContentsRecursively(currentPath: string): Promise<FolderItem[]> {
-    try {
-      const items = fs.readdirSync(currentPath)
-      const folderItems: FolderItem[] = []
+    async function getFolderContentsRecursively(currentPath: string): Promise<FolderItem[]> {
+      try {
+        const items = fs.readdirSync(currentPath)
+        const folderItems: FolderItem[] = []
 
-      for (const item of items) {
-        if (item.startsWith('._')) {
-          continue
-        }
+        for (const item of items) {
+          if (item.startsWith('._')) {
+            continue
+          }
 
-        const itemPath = path.join(currentPath, item)
-        const stats = fs.statSync(itemPath)
+          const itemPath = path.join(currentPath, item)
+          const stats = fs.statSync(itemPath)
 
-        if (stats.isDirectory()) {
-          const subContents = await getFolderContentsRecursively(itemPath)
-          folderItems.push({
-            name: item,
-            path: itemPath,
-            type: 'folder',
-            contents: subContents
-          })
-        } else if (stats.isFile()) {
-          const ext = path.extname(item).toLowerCase()
-          if (videoExtensions.includes(ext) && stats.size > 102400) {
-            try {
-              const type = await fileTypeFromFile(itemPath)
+          if (stats.isDirectory()) {
+            const subContents = await getFolderContentsRecursively(itemPath)
+            folderItems.push({
+              name: item,
+              path: itemPath,
+              type: 'folder',
+              contents: subContents
+            })
+          } else if (stats.isFile()) {
+            const ext = path.extname(item).toLowerCase()
+            if (videoExtensions.includes(ext) && stats.size > 102400) {
+              try {
+                const type = await fileTypeFromFile(itemPath)
 
-              if (type && type.mime && type.mime.startsWith('video/')) {
-                let duration: number | undefined
-                try {
-                  duration = await getVideoDuration(itemPath)
-                } catch (durationError) {
-                  console.error(`Could not get duration for ${itemPath}:`, durationError)
+                if (type && type.mime && type.mime.startsWith('video/')) {
+                  let duration: number | undefined
+                  try {
+                    duration = await getVideoDuration(itemPath)
+                  } catch (durationError) {
+                    console.error(`Could not get duration for ${itemPath}:`, durationError)
+                  }
+
+                  folderItems.push({
+                    name: item,
+                    path: itemPath,
+                    type: 'video',
+                    duration
+                  })
                 }
-
-                folderItems.push({
-                  name: item,
-                  path: itemPath,
-                  type: 'video',
-                  duration
-                })
+              } catch (e) {
+                console.error(`Could not get file type for ${itemPath}:`, e)
+                continue
               }
-            } catch (e) {
-              console.error(`Could not get file type for ${itemPath}:`, e)
-              continue
             }
           }
         }
+        return folderItems
+      } catch (error) {
+        console.error('Error in getFolderContentsRecursively:', error)
+        return []
       }
-      return folderItems
+    }
+
+    try {
+      const result = await getFolderContentsRecursively(folderPath)
+      return result
     } catch (error) {
-      console.error('Error in getFolderContentsRecursively:', error)
+      console.error('Error listing folder contents:', error)
       return []
     }
   }
+)
 
+// Database operations IPC handlers
+ipcMain.handle('test-database-connection', async () => {
+  return await DatabaseOperations.testConnection()
+})
+
+ipcMain.handle('get-all-users', async () => {
+  return await DatabaseOperations.getAllUsers()
+})
+
+// Get system username
+ipcMain.handle('get-system-username', async () => {
   try {
-    const result = await getFolderContentsRecursively(folderPath)
-    return result
+    const username = os.userInfo().username
+    return {
+      success: true,
+      username: username
+    }
   } catch (error) {
-    console.error('Error listing folder contents:', error)
-    return []
+    console.error('Error getting system username:', error)
+    return {
+      success: false,
+      error: 'Failed to get system username'
+    }
   }
+})
+
+// Create system user automatically
+ipcMain.handle('create-system-user', async (_event, username: string) => {
+  return await DatabaseOperations.createSystemUser(username)
 })

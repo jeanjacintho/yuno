@@ -4,8 +4,8 @@ import { Button } from './components/ui/button'
 function App(): React.JSX.Element {
   const navigate = useNavigate()
 
-  function handleAccessRequest(): void {
-    navigate('/dashboard')
+  function handleLogin(): void {
+    navigate('/auth/login')
   }
 
   return (
@@ -19,11 +19,8 @@ function App(): React.JSX.Element {
               </a>
             </div>
             <div className="flex items-center gap-x-5">
-              <Button
-                onClick={handleAccessRequest}
-                className="bg-primary text-sidebar-primary-foreground"
-              >
-                Solicitar acesso
+              <Button onClick={handleLogin} className="bg-primary text-sidebar-primary-foreground">
+                Entrar
               </Button>
             </div>
           </nav>
@@ -42,11 +39,8 @@ function App(): React.JSX.Element {
             Seu conteúdo, seu PC: LMS que lê e reproduz vídeos locais com fluidez e simplicidade.
           </p>
           <div className="mt-8 flex justify-center gap-x-6">
-            <Button
-              onClick={handleAccessRequest}
-              className="bg-primary text-sidebar-primary-foreground"
-            >
-              Solicitar acesso
+            <Button onClick={handleLogin} className="bg-primary text-sidebar-primary-foreground">
+              Entrar
             </Button>
           </div>
         </div>

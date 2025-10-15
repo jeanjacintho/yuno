@@ -1,4 +1,5 @@
 import { GridPattern } from '@renderer/components/ui/grid-pattern'
+import { Toaster } from '@renderer/components/ui/sonner'
 import { cn } from '@renderer/lib/utils'
 import React from 'react'
 import { Outlet } from 'react-router-dom'
@@ -27,6 +28,7 @@ const RootLayout = (): React.ReactElement => {
         )}
       />
       <Outlet />
+      <Toaster />
     </>
   )
 }

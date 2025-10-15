@@ -8,6 +8,20 @@ const api = {
   },
   listFolderContents: async (folderPath: string) => {
     return await ipcRenderer.invoke('list-folder-contents', folderPath)
+  },
+
+  // Database operations
+  testDatabaseConnection: async () => {
+    return await ipcRenderer.invoke('test-database-connection')
+  },
+  getAllUsers: async () => {
+    return await ipcRenderer.invoke('get-all-users')
+  },
+  getSystemUsername: async () => {
+    return await ipcRenderer.invoke('get-system-username')
+  },
+  createSystemUser: async (username: string) => {
+    return await ipcRenderer.invoke('create-system-user', username)
   }
 }
 
