@@ -22,13 +22,13 @@ export class DatabaseOperations {
             name TEXT NOT NULL,
             isActive BOOLEAN DEFAULT true NOT NULL,
             lastLoginAt DATETIME,
+            courseFolderPath TEXT,
             createdAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
             updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
           )`
 
         console.log('Schema criado com sucesso!')
       }
-
       this.initialized = true
     }
   }
@@ -128,6 +128,38 @@ export class DatabaseOperations {
     if (this.prisma) {
       await this.prisma.$disconnect()
       this.prisma = null
+    }
+  }
+
+  static async setUserCourseFolder(
+    userId: number,
+    folderPath: string | null
+  ): Promise<{ success: boolean }> {
+    try {
+      await this.ensureInitialized()
+      await this.prisma!.$executeRawUnsafe(
+        'UPDATE users SET courseFolderPath = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
+        folderPath,
+        userId
+      )
+      return { success: true }
+    } catch (error) {
+      console.error('Erro ao salvar courseFolderPath:', error)
+      return { success: false }
+    }
+  }
+
+  static async getUserCourseFolder(userId: number): Promise<string | null> {
+    try {
+      await this.ensureInitialized()
+      const rows = (await this.prisma!.$queryRawUnsafe(
+        'SELECT courseFolderPath as folderPath FROM users WHERE id = ?',
+        userId
+      )) as Array<{ folderPath: string | null }>
+      return rows.length > 0 ? rows[0].folderPath : null
+    } catch (error) {
+      console.error('Erro ao obter courseFolderPath:', error)
+      return null
     }
   }
 }

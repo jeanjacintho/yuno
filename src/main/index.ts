@@ -210,3 +210,12 @@ ipcMain.handle('get-system-username', async () => {
 ipcMain.handle('create-system-user', async (_event, username: string) => {
   return await DatabaseOperations.createSystemUser(username)
 })
+
+// Persist and retrieve user course folder
+ipcMain.handle('set-user-course-folder', async (_event, userId: number, folderPath: string | null) => {
+  return await DatabaseOperations.setUserCourseFolder(userId, folderPath)
+})
+
+ipcMain.handle('get-user-course-folder', async (_event, userId: number) => {
+  return await DatabaseOperations.getUserCourseFolder(userId)
+})

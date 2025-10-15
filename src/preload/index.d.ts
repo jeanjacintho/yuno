@@ -12,6 +12,8 @@ interface Api {
   createSystemUser: (
     username: string
   ) => Promise<{ success: boolean; message?: string; user?: any }>
+  setUserCourseFolder: (userId: number, folderPath: string | null) => Promise<{ success: boolean }>
+  getUserCourseFolder: (userId: number) => Promise<string | null>
 }
 
 declare global {

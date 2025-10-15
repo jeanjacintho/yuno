@@ -22,6 +22,12 @@ const api = {
   },
   createSystemUser: async (username: string) => {
     return await ipcRenderer.invoke('create-system-user', username)
+  },
+  setUserCourseFolder: async (userId: number, folderPath: string | null) => {
+    return await ipcRenderer.invoke('set-user-course-folder', userId, folderPath)
+  },
+  getUserCourseFolder: async (userId: number) => {
+    return await ipcRenderer.invoke('get-user-course-folder', userId)
   }
 }
 

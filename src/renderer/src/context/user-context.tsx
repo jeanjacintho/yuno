@@ -53,6 +53,9 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
                   : undefined
               })
             })
+            try {
+              localStorage.setItem('currentUserId', String(createResult.user.id))
+            } catch {}
           }
         }
       } catch (error) {

@@ -60,6 +60,15 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
           const folderPath = await api.selectFolder()
           if (folderPath) {
             setFolderPath(folderPath)
+            try {
+              const userIdStr = localStorage.getItem('currentUserId')
+              const userId = userIdStr ? parseInt(userIdStr, 10) : null
+              if (userId) {
+                await api.setUserCourseFolder(userId, folderPath)
+              }
+            } catch (e) {
+              console.error('Erro ao persistir courseFolderPath:', e)
+            }
           }
         }
       } catch (error) {
