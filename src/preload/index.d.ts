@@ -6,6 +6,7 @@ import type {
   CreateUserResult,
   DatabaseResult
 } from '../../shared/types'
+import type { FolderStructureInfo } from '../../shared/types/folder-structure'
 
 interface Api {
   selectFolder: () => Promise<string | null>
@@ -17,6 +18,7 @@ interface Api {
   setUserCourseFolder: (userId: number, folderPath: string | null) => Promise<DatabaseResult>
   getUserCourseFolder: (userId: number) => Promise<string | null>
   checkFolderExists: (folderPath: string) => Promise<boolean>
+  analyzeFolderStructure: (folderPath: string) => Promise<FolderStructureInfo | null>
 }
 
 declare global {

@@ -9,4 +9,3 @@ export function setupDatabasePath(): void {
 
   process.env.DATABASE_URL = `file:${dbPath}`
 }
-

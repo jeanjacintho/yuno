@@ -3,7 +3,7 @@ import os from 'node:os'
 import { promises as fs } from 'node:fs'
 import { FileProcessor } from '../services/file-processor'
 import { DatabaseService } from '../services/database-service'
-import type { FolderItem } from '../../shared/types/index'
+import type { FolderItem } from '../../shared/types'
 
 export function setupIpcHandlers(): void {
   ipcMain.handle('select-folder', async () => {
@@ -78,5 +78,16 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('get-user-course-folder', async (_event, userId: number) => {
     return await DatabaseService.getUserCourseFolder(userId)
+  })
+
+  ipcMain.handle('analyze-folder-structure', async (_event, folderPath: string) => {
+    try {
+      const folderItems = await FileProcessor.getFolderContentsRecursively(folderPath)
+      const { FolderStructureAnalyzer } = await import('../services/folder-structure-analyzer')
+      return FolderStructureAnalyzer.analyzeStructureFromItems(folderItems, folderPath)
+    } catch (error) {
+      console.error('Error analyzing folder structure:', error)
+      return null
+    }
   })
 }

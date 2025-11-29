@@ -44,19 +44,20 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
         if (usernameResult.success && usernameResult.username) {
           const createResult = await window.api.createSystemUser(usernameResult.username)
           if (createResult.success && createResult.user) {
+            const user = createResult.user
             startTransition(() => {
               setUser({
-                id: createResult.user.id,
-                name: createResult.user.name,
-                email: createResult.user.email,
-                isActive: createResult.user.isActive,
-                lastLoginAt: createResult.user.lastLoginAt
-                  ? new Date(createResult.user.lastLoginAt)
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                isActive: user.isActive,
+                lastLoginAt: user.lastLoginAt
+                  ? new Date(user.lastLoginAt)
                   : undefined
               })
             })
             try {
-              localStorage.setItem('currentUserId', String(createResult.user.id))
+              localStorage.setItem('currentUserId', String(user.id))
             } catch {}
           }
         }

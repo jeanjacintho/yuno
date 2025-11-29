@@ -80,12 +80,14 @@ export function LoginPage(): React.ReactElement {
           return
         }
 
-        console.log('Usuário do sistema inicializado:', createResult.user)
+        if (createResult.user) {
+          console.log('Usuário do sistema inicializado:', createResult.user)
 
-        try {
-          localStorage.setItem('currentUserId', String(createResult.user.id))
-        } catch (localStorageError) {
-          console.warn('Erro ao salvar userId no localStorage:', localStorageError)
+          try {
+            localStorage.setItem('currentUserId', String(createResult.user.id))
+          } catch (localStorageError) {
+            console.warn('Erro ao salvar userId no localStorage:', localStorageError)
+          }
         }
 
         setStatusMessage('Login realizado com sucesso!')

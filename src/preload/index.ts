@@ -6,6 +6,7 @@ import type {
   CreateUserResult,
   DatabaseResult
 } from '../shared/types'
+import type { FolderStructureInfo } from '../shared/types/folder-structure'
 import type { User } from '@prisma/client'
 
 console.log('[Preload] Script carregado')
@@ -42,6 +43,9 @@ const api = {
   },
   checkFolderExists: async (folderPath: string): Promise<boolean> => {
     return await ipcRenderer.invoke('check-folder-exists', folderPath)
+  },
+  analyzeFolderStructure: async (folderPath: string): Promise<FolderStructureInfo | null> => {
+    return await ipcRenderer.invoke('analyze-folder-structure', folderPath)
   }
 }
 
@@ -58,9 +62,9 @@ try {
 
   try {
     if (typeof window !== 'undefined') {
-      // @ts-ignore
+      // @ts-ignore - Fallback quando contextBridge não está disponível
       window.electron = electronAPI
-      // @ts-ignore
+      // @ts-ignore - Fallback quando contextBridge não está disponível
       window.api = api
       console.log('[Preload] API exposta diretamente no window (fallback)')
     }
