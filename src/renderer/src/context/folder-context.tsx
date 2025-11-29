@@ -13,7 +13,7 @@ interface FolderProviderProps {
   children: ReactNode
 }
 
-export const FolderProvider = ({ children }: FolderProviderProps) => {
+export const FolderProvider = ({ children }: FolderProviderProps): React.JSX.Element => {
   const [folderPath, setFolderPath] = useState<string | null>(null)
   const [isValidating, setIsValidating] = useState(false)
   const [isValid, setIsValid] = useState(false)
@@ -103,7 +103,8 @@ export const FolderProvider = ({ children }: FolderProviderProps) => {
   )
 }
 
-export function useFolder() {
+// eslint-disable-next-line react-refresh/only-export-components
+export function useFolder(): FolderContextType {
   const context = useContext(FolderContext)
   if (!context) {
     throw new Error('useFolder must be used within a FolderProvider')
