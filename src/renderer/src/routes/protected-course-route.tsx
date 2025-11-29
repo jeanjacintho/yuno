@@ -1,4 +1,3 @@
-// routes/protected-course-route.tsx
 import { useFolder } from '../context/folder-context'
 import { ReactNode, useState, useEffect } from 'react'
 import SettingsDialog from '../pages/settings/settings'
@@ -18,15 +17,29 @@ interface ProtectedCourseRouteProps {
 }
 
 const ProtectedCourseRoute = ({ children }: ProtectedCourseRouteProps): React.JSX.Element => {
-  const { folderPath } = useFolder()
+  const { folderPath, isValid, isValidating } = useFolder()
   const [showAlert, setShowAlert] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [alertMessage, setAlertMessage] = useState('')
 
   useEffect(() => {
-    if (!folderPath) {
+    if (isValidating) {
+      return
+    }
+
+    if (!folderPath || !isValid) {
+      if (!folderPath) {
+        setAlertMessage(
+          'Você precisa selecionar uma pasta antes de acessar os cursos. Por favor, vá para as configurações e selecione uma pasta.'
+        )
+      } else {
+        setAlertMessage(
+          'A pasta selecionada não foi encontrada. Ela pode ter sido movida, renomeada ou o dispositivo pode estar desconectado. Por favor, selecione uma nova pasta nas configurações.'
+        )
+      }
       setShowAlert(true)
     }
-  }, [folderPath])
+  }, [folderPath, isValid, isValidating])
 
   const handleAlertAction = (): void => {
     setShowAlert(false)
@@ -38,18 +51,27 @@ const ProtectedCourseRoute = ({ children }: ProtectedCourseRouteProps): React.JS
     setShowSettings(true)
   }
 
-  if (!folderPath) {
+  if (isValidating) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-muted-foreground">Verificando pasta...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!folderPath || !isValid) {
     return (
       <>
         <Dashboard />
         <AlertDialog open={showAlert} onOpenChange={handleAlertClose}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Pasta não selecionada</AlertDialogTitle>
-              <AlertDialogDescription>
-                Você precisa selecionar uma pasta antes de acessar os cursos. Por favor, vá para as
-                configurações e selecione uma pasta.
-              </AlertDialogDescription>
+              <AlertDialogTitle>
+                {!folderPath ? 'Pasta não selecionada' : 'Pasta não encontrada'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>{alertMessage}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogAction onClick={handleAlertAction}>OK</AlertDialogAction>

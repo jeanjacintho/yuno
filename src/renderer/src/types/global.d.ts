@@ -18,6 +18,7 @@ declare global {
         folderPath: string | null
       ) => Promise<{ success: boolean }>
       getUserCourseFolder: (userId: number) => Promise<string | null>
+      checkFolderExists: (folderPath: string) => Promise<boolean>
     }
   }
 }

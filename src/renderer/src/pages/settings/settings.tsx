@@ -55,20 +55,22 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
   const handleSelectFolder = (): void => {
     startTransition(async () => {
       try {
-        const api = (window as any).api
-        if (api) {
-          const folderPath = await api.selectFolder()
-          if (folderPath) {
-            setFolderPath(folderPath)
-            try {
-              const userIdStr = localStorage.getItem('currentUserId')
-              const userId = userIdStr ? parseInt(userIdStr, 10) : null
-              if (userId) {
-                await api.setUserCourseFolder(userId, folderPath)
-              }
-            } catch (e) {
-              console.error('Erro ao persistir courseFolderPath:', e)
+        if (!window.api) {
+          return
+        }
+
+        const selectedPath = await window.api.selectFolder()
+        if (selectedPath) {
+          await setFolderPath(selectedPath)
+
+          try {
+            const userIdStr = localStorage.getItem('currentUserId')
+            const userId = userIdStr ? parseInt(userIdStr, 10) : null
+            if (userId) {
+              await window.api.setUserCourseFolder(userId, selectedPath)
             }
+          } catch (e) {
+            console.error('Erro ao persistir courseFolderPath:', e)
           }
         }
       } catch (error) {

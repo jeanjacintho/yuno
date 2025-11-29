@@ -39,6 +39,9 @@ const api = {
   },
   getUserCourseFolder: async (userId: number): Promise<string | null> => {
     return await ipcRenderer.invoke('get-user-course-folder', userId)
+  },
+  checkFolderExists: async (folderPath: string): Promise<boolean> => {
+    return await ipcRenderer.invoke('check-folder-exists', folderPath)
   }
 }
 
@@ -52,7 +55,7 @@ try {
   }
 } catch (error) {
   console.error('[Preload] Erro ao expor via contextBridge, tentando método alternativo:', error)
-  
+
   try {
     if (typeof window !== 'undefined') {
       // @ts-ignore

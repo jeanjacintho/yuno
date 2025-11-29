@@ -16,6 +16,7 @@ interface Api {
   createSystemUser: (username: string) => Promise<CreateUserResult>
   setUserCourseFolder: (userId: number, folderPath: string | null) => Promise<DatabaseResult>
   getUserCourseFolder: (userId: number) => Promise<string | null>
+  checkFolderExists: (folderPath: string) => Promise<boolean>
 }
 
 declare global {

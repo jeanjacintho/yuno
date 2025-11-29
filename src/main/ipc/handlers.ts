@@ -1,5 +1,6 @@
 import { ipcMain, dialog } from 'electron'
 import os from 'node:os'
+import { promises as fs } from 'node:fs'
 import { FileProcessor } from '../services/file-processor'
 import { DatabaseService } from '../services/database-service'
 import type { FolderItem } from '../../shared/types/index'
@@ -13,6 +14,19 @@ export function setupIpcHandlers(): void {
       return null
     }
     return result.filePaths[0]
+  })
+
+  ipcMain.handle('check-folder-exists', async (_event, folderPath: string): Promise<boolean> => {
+    try {
+      if (!folderPath) {
+        return false
+      }
+      const stats = await fs.stat(folderPath)
+      return stats.isDirectory()
+    } catch (error) {
+      console.error('Error checking folder existence:', error)
+      return false
+    }
   })
 
   ipcMain.handle(
@@ -66,4 +80,3 @@ export function setupIpcHandlers(): void {
     return await DatabaseService.getUserCourseFolder(userId)
   })
 }
-
