@@ -1,6 +1,7 @@
 import { PrismaClient, type User } from '@prisma/client'
+import type { CreateUserResult, DatabaseResult } from '../../shared/types/index'
 
-export class DatabaseOperations {
+export class DatabaseService {
   private static prisma: PrismaClient | null = null
   private static initialized = false
 
@@ -8,27 +9,6 @@ export class DatabaseOperations {
     if (!this.initialized) {
       const prisma = this.getPrisma()
       await prisma.$connect()
-
-      // Verificar se as tabelas existem, se não criar
-      try {
-        await prisma.$queryRaw`SELECT name FROM sqlite_master WHERE type='table' AND name='users'`
-      } catch {
-        console.log('Tabelas não encontradas, criando schema...')
-
-        await prisma.$executeRaw`
-          CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            name TEXT NOT NULL,
-            isActive BOOLEAN DEFAULT true NOT NULL,
-            lastLoginAt DATETIME,
-            courseFolderPath TEXT,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
-          )`
-
-        console.log('Schema criado com sucesso!')
-      }
       this.initialized = true
     }
   }
@@ -58,31 +38,40 @@ export class DatabaseOperations {
 
   static async createSystemUser(
     username: string
-  ): Promise<{ success: boolean; message?: string; user?: User }> {
+  ): Promise<CreateUserResult> {
     await this.ensureInitialized()
 
     try {
       const email = `${username}@yuno.local`
+      const prisma = this.getPrisma()
 
-      // Tentar localizar por email (único)
-      const existingByEmail = await this.prisma!.user.findUnique({
+      const existingByEmail = await prisma.user.findUnique({
         where: { email }
       })
 
       if (existingByEmail) {
-        const updated = await this.prisma!.user.update({
+        const updated = await prisma.user.update({
           where: { email },
-          data: { lastLoginAt: new Date(), isActive: true, name: username }
+          data: {
+            lastLoginAt: new Date(),
+            isActive: true,
+            name: username
+          }
         })
         return {
           success: true,
           message: 'Usuário já existia; atualizado com sucesso',
-          user: updated
+          user: {
+            id: updated.id,
+            name: updated.name,
+            email: updated.email,
+            isActive: updated.isActive,
+            lastLoginAt: updated.lastLoginAt ?? undefined
+          }
         }
       }
 
-      // Não existe: criar
-      const created = await this.prisma!.user.create({
+      const created = await prisma.user.create({
         data: {
           name: username,
           email,
@@ -100,7 +89,13 @@ export class DatabaseOperations {
       return {
         success: true,
         message: 'Usuário criado automaticamente',
-        user: created
+        user: {
+          id: created.id,
+          name: created.name,
+          email: created.email,
+          isActive: created.isActive,
+          lastLoginAt: created.lastLoginAt ?? undefined
+        }
       }
     } catch (error) {
       console.error('Erro ao criar usuário do sistema:', error)
@@ -120,7 +115,50 @@ export class DatabaseOperations {
       })
     } catch (error) {
       console.error('Error getting users:', error)
-      return [] as User[]
+      return []
+    }
+  }
+
+  static async setUserCourseFolder(
+    userId: number,
+    folderPath: string | null
+  ): Promise<DatabaseResult> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          courseFolderPath: folderPath,
+          updatedAt: new Date()
+        }
+      })
+
+      return { success: true }
+    } catch (error) {
+      console.error('Erro ao salvar courseFolderPath:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  static async getUserCourseFolder(userId: number): Promise<string | null> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { courseFolderPath: true }
+      })
+
+      return user?.courseFolderPath ?? null
+    } catch (error) {
+      console.error('Erro ao obter courseFolderPath:', error)
+      return null
     }
   }
 
@@ -128,38 +166,8 @@ export class DatabaseOperations {
     if (this.prisma) {
       await this.prisma.$disconnect()
       this.prisma = null
-    }
-  }
-
-  static async setUserCourseFolder(
-    userId: number,
-    folderPath: string | null
-  ): Promise<{ success: boolean }> {
-    try {
-      await this.ensureInitialized()
-      await this.prisma!.$executeRawUnsafe(
-        'UPDATE users SET courseFolderPath = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
-        folderPath,
-        userId
-      )
-      return { success: true }
-    } catch (error) {
-      console.error('Erro ao salvar courseFolderPath:', error)
-      return { success: false }
-    }
-  }
-
-  static async getUserCourseFolder(userId: number): Promise<string | null> {
-    try {
-      await this.ensureInitialized()
-      const rows = (await this.prisma!.$queryRawUnsafe(
-        'SELECT courseFolderPath as folderPath FROM users WHERE id = ?',
-        userId
-      )) as Array<{ folderPath: string | null }>
-      return rows.length > 0 ? rows[0].folderPath : null
-    } catch (error) {
-      console.error('Erro ao obter courseFolderPath:', error)
-      return null
+      this.initialized = false
     }
   }
 }
+

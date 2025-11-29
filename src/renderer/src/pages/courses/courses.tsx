@@ -3,18 +3,7 @@ import React, { useEffect, useState, useTransition } from 'react'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { Card } from '@renderer/components/ui/card'
 import { Button } from '@renderer/components/ui/button'
-
-interface FolderItem {
-  name: string
-  path: string
-  type: 'folder' | 'video'
-  contents?: FolderItem[]
-}
-
-interface API {
-  listFolderContents: (folderPath: string) => Promise<FolderItem[]>
-  selectFolder: () => Promise<string | null>
-}
+import type { FolderItem } from '../../../../shared/types/index'
 
 const Courses: React.FC = () => {
   const { folderPath } = useFolder()
@@ -23,16 +12,18 @@ const Courses: React.FC = () => {
 
   useEffect(() => {
     const loadSavedPath = async (): Promise<void> => {
-      if (!folderPath) return
+      if (!folderPath || !window.api) {
+        return
+      }
 
       startTransition(async () => {
+        if (!window.api) {
+          return
+        }
+
         try {
-          const api = (window as { api: API }).api
-          if (api) {
-            const items = await api.listFolderContents(folderPath)
-            console.log(items)
-            setFolderItems(items || [])
-          }
+          const items = await window.api.listFolderContents(folderPath)
+          setFolderItems(items || [])
         } catch (error) {
           console.error('Error loading folder contents:', error)
         }

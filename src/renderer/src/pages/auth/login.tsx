@@ -17,10 +17,12 @@ export function LoginPage(): React.ReactElement {
   useEffect(() => {
     const handleInstantLogin = async () => {
       try {
-        // Capturar nome do usuário do sistema
+        if (!window.api) {
+          return
+        }
+
         const usernameResult = await window.api.getSystemUsername()
         if (usernameResult.success && usernameResult.username) {
-          // Criar usuário automaticamente no banco
           const createResult = await window.api.createSystemUser(usernameResult.username)
           if (createResult.success) {
             console.log('Usuário do sistema inicializado:', createResult.user)

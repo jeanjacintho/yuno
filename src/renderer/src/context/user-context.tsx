@@ -7,7 +7,7 @@ import React, {
   useTransition
 } from 'react'
 
-interface User {
+interface UserContextUser {
   id: number
   name: string
   email: string
@@ -16,9 +16,9 @@ interface User {
 }
 
 interface UserContextType {
-  user: User | null
+  user: UserContextUser | null
   isPending: boolean
-  setUser: (user: User | null) => void
+  setUser: (user: UserContextUser | null) => void
   logout: () => void
 }
 
@@ -29,17 +29,19 @@ interface UserProviderProps {
 }
 
 export function UserProvider({ children }: UserProviderProps): React.JSX.Element {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserContextUser | null>(null)
   const [isPending, startTransition] = useTransition()
 
   // Carregar dados do usuário do sistema ao inicializar
   useEffect(() => {
     const loadUserData = async (): Promise<void> => {
       try {
-        // Capturar nome do usuário do sistema
+        if (!window.api) {
+          return
+        }
+
         const usernameResult = await window.api.getSystemUsername()
         if (usernameResult.success && usernameResult.username) {
-          // Criar ou buscar usuário no banco
           const createResult = await window.api.createSystemUser(usernameResult.username)
           if (createResult.success && createResult.user) {
             startTransition(() => {

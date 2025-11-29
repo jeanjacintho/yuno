@@ -1,32 +1,39 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type {
+  FolderItem,
+  SystemUsernameResult,
+  CreateUserResult,
+  DatabaseResult
+} from '../shared/types'
+import type { User } from '@prisma/client'
 
-// Custom APIs for renderer
 const api = {
-  selectFolder: async () => {
+  selectFolder: async (): Promise<string | null> => {
     return await ipcRenderer.invoke('select-folder')
   },
-  listFolderContents: async (folderPath: string) => {
+  listFolderContents: async (folderPath: string): Promise<FolderItem[]> => {
     return await ipcRenderer.invoke('list-folder-contents', folderPath)
   },
-
-  // Database operations
-  testDatabaseConnection: async () => {
+  testDatabaseConnection: async (): Promise<boolean> => {
     return await ipcRenderer.invoke('test-database-connection')
   },
-  getAllUsers: async () => {
+  getAllUsers: async (): Promise<User[]> => {
     return await ipcRenderer.invoke('get-all-users')
   },
-  getSystemUsername: async () => {
+  getSystemUsername: async (): Promise<SystemUsernameResult> => {
     return await ipcRenderer.invoke('get-system-username')
   },
-  createSystemUser: async (username: string) => {
+  createSystemUser: async (username: string): Promise<CreateUserResult> => {
     return await ipcRenderer.invoke('create-system-user', username)
   },
-  setUserCourseFolder: async (userId: number, folderPath: string | null) => {
+  setUserCourseFolder: async (
+    userId: number,
+    folderPath: string | null
+  ): Promise<DatabaseResult> => {
     return await ipcRenderer.invoke('set-user-course-folder', userId, folderPath)
   },
-  getUserCourseFolder: async (userId: number) => {
+  getUserCourseFolder: async (userId: number): Promise<string | null> => {
     return await ipcRenderer.invoke('get-user-course-folder', userId)
   }
 }

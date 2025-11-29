@@ -7,7 +7,11 @@ interface FolderContextType {
 
 const FolderContext = createContext<FolderContextType | undefined>(undefined)
 
-export const FolderProvider = ({ children }: { children: ReactNode }) => {
+interface FolderProviderProps {
+  children: ReactNode
+}
+
+export const FolderProvider = ({ children }: FolderProviderProps) => {
   const [folderPath, setFolderPath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -16,11 +20,16 @@ export const FolderProvider = ({ children }: { children: ReactNode }) => {
         const userIdStr =
           typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null
         const userId = userIdStr ? parseInt(userIdStr, 10) : null
-        if (userId && (window as any).api?.getUserCourseFolder) {
-          const saved = await (window as any).api.getUserCourseFolder(userId)
-          if (saved) setFolderPath(saved)
+
+        if (userId && window.api?.getUserCourseFolder) {
+          const saved = await window.api.getUserCourseFolder(userId)
+          if (saved) {
+            setFolderPath(saved)
+          }
         }
-      } catch {}
+      } catch (error) {
+        console.error('Error loading folder path:', error)
+      }
     }
     loadFolder()
   }, [])
