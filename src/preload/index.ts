@@ -8,6 +8,10 @@ import type {
 } from '../shared/types'
 import type { User } from '@prisma/client'
 
+console.log('[Preload] Script carregado')
+console.log('[Preload] contextIsolated:', process.contextIsolated)
+console.log('[Preload] nodeIntegration:', process.versions.node)
+
 const api = {
   selectFolder: async (): Promise<string | null> => {
     return await ipcRenderer.invoke('select-folder')
@@ -38,19 +42,26 @@ const api = {
   }
 }
 
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
-if (process.contextIsolated) {
-  try {
+try {
+  if (typeof contextBridge !== 'undefined') {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
-  } catch (error) {
-    console.error(error)
+    console.log('[Preload] API exposta via contextBridge com sucesso')
+  } else {
+    throw new Error('contextBridge não está disponível')
   }
-} else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+} catch (error) {
+  console.error('[Preload] Erro ao expor via contextBridge, tentando método alternativo:', error)
+  
+  try {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore
+      window.electron = electronAPI
+      // @ts-ignore
+      window.api = api
+      console.log('[Preload] API exposta diretamente no window (fallback)')
+    }
+  } catch (fallbackError) {
+    console.error('[Preload] Erro crítico ao expor API:', fallbackError)
+  }
 }
