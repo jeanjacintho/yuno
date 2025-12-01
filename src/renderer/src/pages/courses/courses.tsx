@@ -1,5 +1,6 @@
 import { useFolder } from '@renderer/context/folder-context'
 import React, { useEffect, useState, useTransition } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { Card } from '@renderer/components/ui/card'
 import { Button } from '@renderer/components/ui/button'
@@ -7,6 +8,7 @@ import type { FolderItem } from '../../../../shared/types/index'
 
 const Courses: React.FC = () => {
   const { folderPath } = useFolder()
+  const navigate = useNavigate()
   const [folderItems, setFolderItems] = useState<FolderItem[]>([])
   const [isPending, startTransition] = useTransition()
 
@@ -96,6 +98,10 @@ const Courses: React.FC = () => {
               <Button
                 variant={'outline'}
                 className="w-full font-medium py-2.5 transition-all duration-200"
+                onClick={() => {
+                  const encodedPath = encodeURIComponent(item.path)
+                  navigate(`/courses/${encodedPath}`)
+                }}
               >
                 Start course
               </Button>

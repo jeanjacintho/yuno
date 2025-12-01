@@ -6,6 +6,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import App from './App'
 import Dashboard from './pages/dashboard/dashboard'
 import Courses from './pages/courses/courses'
+import CourseModules from './pages/courses/course-modules'
 import LoginPage from './pages/auth/login'
 import AppLayout from './templates/app-layout'
 import RootLayout from './templates/root-layout'
@@ -30,6 +31,14 @@ createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedCourseRoute>
                   <Courses />
+                </ProtectedCourseRoute>
+              }
+            />
+            <Route
+              path="/courses/:coursePath"
+              element={
+                <ProtectedCourseRoute>
+                  <CourseModules />
                 </ProtectedCourseRoute>
               }
             />
