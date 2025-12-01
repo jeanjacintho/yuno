@@ -3,6 +3,7 @@ import os from 'node:os'
 import { promises as fs } from 'node:fs'
 import { FileProcessor } from '../services/file-processor'
 import { DatabaseService } from '../services/database-service'
+import { CourseIndexService } from '../services/course-index-service'
 import type { FolderItem } from '../../shared/types'
 
 export function setupIpcHandlers(): void {
@@ -33,7 +34,7 @@ export function setupIpcHandlers(): void {
     'list-folder-contents',
     async (_event, folderPath: string): Promise<FolderItem[]> => {
       try {
-        return await FileProcessor.getFolderContentsRecursively(folderPath)
+        return await FileProcessor.getFolderContents(folderPath)
       } catch (error) {
         console.error('Error listing folder contents:', error)
         return []
@@ -90,4 +91,60 @@ export function setupIpcHandlers(): void {
       return null
     }
   })
+
+  ipcMain.handle('start-course-index', async (_event, rootPath: string) => {
+    try {
+      const jobId = CourseIndexService.startIndex(rootPath)
+      return { jobId }
+    } catch (error) {
+      console.error('Error starting course index:', error)
+      return { error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  })
+
+  ipcMain.handle('get-course-index-status', async (_event, jobId: string) => {
+    try {
+      return CourseIndexService.getStatus(jobId)
+    } catch (error) {
+      console.error('Error getting course index status:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle(
+    'get-indexed-folder',
+    async (_event, rootPath: string, folderPath: string): Promise<FolderItem[] | null> => {
+      try {
+        const index = await DatabaseService.getCourseIndex(rootPath)
+        if (!index) {
+          return null
+        }
+
+        const findFolder = (items: FolderItem[], targetPath: string): FolderItem | null => {
+          for (const item of items) {
+            if (item.path === targetPath && item.type === 'folder') {
+              return item
+            }
+            if (item.type === 'folder' && item.contents) {
+              const found = findFolder(item.contents, targetPath)
+              if (found) {
+                return found
+              }
+            }
+          }
+          return null
+        }
+
+        const folder = findFolder(index, folderPath)
+        if (!folder) {
+          return null
+        }
+
+        return folder.contents ?? []
+      } catch (error) {
+        console.error('Error getting indexed folder:', error)
+        return null
+      }
+    }
+  )
 }

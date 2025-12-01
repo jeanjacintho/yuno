@@ -46,6 +46,18 @@ const api = {
   },
   analyzeFolderStructure: async (folderPath: string): Promise<FolderStructureInfo | null> => {
     return await ipcRenderer.invoke('analyze-folder-structure', folderPath)
+  },
+  startCourseIndex: async (rootPath: string): Promise<{ jobId?: string; error?: string }> => {
+    return await ipcRenderer.invoke('start-course-index', rootPath)
+  },
+  getCourseIndexStatus: async (jobId: string) => {
+    return await ipcRenderer.invoke('get-course-index-status', jobId)
+  },
+  getIndexedFolder: async (
+    rootPath: string,
+    folderPath: string
+  ): Promise<FolderItem[] | null> => {
+    return await ipcRenderer.invoke('get-indexed-folder', rootPath, folderPath)
   }
 }
 

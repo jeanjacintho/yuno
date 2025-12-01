@@ -1,5 +1,5 @@
 import { PrismaClient, type User } from '@prisma/client'
-import type { CreateUserResult, DatabaseResult } from '../../shared/types/index'
+import type { CreateUserResult, DatabaseResult, FolderItem } from '../../shared/types/index'
 
 export class DatabaseService {
   private static prisma: PrismaClient | null = null
@@ -167,6 +167,57 @@ export class DatabaseService {
       await this.prisma.$disconnect()
       this.prisma = null
       this.initialized = false
+    }
+  }
+
+  // Course index helpers (background indexing + cache)
+
+  static async saveCourseIndex(
+    rootPath: string,
+    items: FolderItem[]
+  ): Promise<void> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma() as PrismaClient & {
+        courseIndex: {
+          upsert: (args: any) => Promise<any>
+        }
+      }
+
+      const dataJson = JSON.stringify(items)
+
+      await prisma.courseIndex.upsert({
+        where: { rootPath },
+        update: { data: dataJson },
+        create: { rootPath, data: dataJson }
+      })
+    } catch (error) {
+      console.error('Erro ao salvar índice de curso:', error)
+    }
+  }
+
+  static async getCourseIndex(rootPath: string): Promise<FolderItem[] | null> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma() as PrismaClient & {
+        courseIndex: {
+          findUnique: (args: any) => Promise<{ data: string } | null>
+        }
+      }
+
+      const record = await prisma.courseIndex.findUnique({
+        where: { rootPath }
+      })
+
+      if (!record?.data) {
+        return null
+      }
+
+      const parsed = JSON.parse(record.data) as FolderItem[]
+      return parsed
+    } catch (error) {
+      console.error('Erro ao obter índice de curso:', error)
+      return null
     }
   }
 }

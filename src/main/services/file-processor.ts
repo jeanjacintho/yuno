@@ -10,6 +10,66 @@ import {
 } from '../../shared/types/index'
 
 export class FileProcessor {
+  /**
+   * Non-recursive listing used by the renderer for fast, first-level views.
+   * Does not compute video duration to keep it lightweight.
+   */
+  static async getFolderContents(
+    currentPath: string
+  ): Promise<FolderItem[]> {
+    try {
+      const items = await fs.readdir(currentPath)
+
+      const processItems = await Promise.all(
+        items.map(async (item) => {
+          if (item.startsWith(HIDDEN_FILE_PREFIX)) {
+            return null
+          }
+
+          const itemPath = path.join(currentPath, item)
+          const stats = await fs.stat(itemPath)
+
+          if (stats.isDirectory()) {
+            return {
+              name: item,
+              path: itemPath,
+              type: 'folder' as const
+            }
+          }
+
+          if (stats.isFile()) {
+            const ext = path.extname(item).toLowerCase()
+            const isValidVideoExtension = VIDEO_EXTENSIONS.includes(
+              ext as (typeof VIDEO_EXTENSIONS)[number]
+            )
+            const isLargeEnough = stats.size > MIN_VIDEO_SIZE_BYTES
+
+            if (isValidVideoExtension && isLargeEnough) {
+              // Lightweight video representation without duration
+              return {
+                name: item,
+                path: itemPath,
+                type: 'video' as const
+              }
+            }
+          }
+
+          return null
+        })
+      )
+
+      return processItems.filter(
+        (item): item is FolderItem => item !== null
+      )
+    } catch (error) {
+      console.error('Error in getFolderContents:', error)
+      return []
+    }
+  }
+
+  /**
+   * Recursive, full scan used by the background indexer.
+   */
   static async getFolderContentsRecursively(
     currentPath: string
   ): Promise<FolderItem[]> {

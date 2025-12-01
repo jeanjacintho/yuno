@@ -19,3 +19,11 @@ model User {
 
   @@map("users")
 }
+
+model CourseIndex {
+  id        Int      @id @default(autoincrement())
+  rootPath  String   @unique
+  data      String   // JSON-serialized FolderItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
