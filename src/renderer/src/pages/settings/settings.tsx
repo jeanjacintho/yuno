@@ -1,20 +1,28 @@
 import { Button } from '@renderer/components/ui/button'
-import { Dialog, DialogContent } from '@renderer/components/ui/dialog'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@renderer/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
+import { Input } from '@renderer/components/ui/input'
 import { Label } from '@renderer/components/ui/label'
 import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem
 } from '@renderer/components/ui/sidebar'
 import { useFolder } from '@renderer/context/folder-context'
-import { Bell, Keyboard, Palette, Shield, UserRound } from 'lucide-react'
-import React, { useState, useTransition } from 'react'
+import { useUser } from '@renderer/context/user-context'
+import { Bell, FolderOpen, Keyboard, Loader2, Palette, Shield, UserRound } from 'lucide-react'
+import React, { useCallback, useState, useTransition } from 'react'
 
-const settingsItems = [
+interface SettingsSection {
+  id: string
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: 'account',
     title: 'Account',
@@ -47,99 +55,160 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
-  const [activeSection, setActiveSection] = useState('account')
-  const { setFolderPath, folderPath } = useFolder()
+const AccountSection: React.FC = () => {
+  const { folderPath, setFolderPath, isValidating, isValid } = useFolder()
+  const { user } = useUser()
   const [isPending, startTransition] = useTransition()
 
-  const handleSelectFolder = (): void => {
+  const handleSelectFolder = useCallback((): void => {
     startTransition(async () => {
-      try {
-        if (!window.api) {
-          return
-        }
+      if (!window.api) {
+        return
+      }
 
+      try {
         const selectedPath = await window.api.selectFolder()
         if (selectedPath) {
           await setFolderPath(selectedPath)
-
-          try {
-            const userIdStr = localStorage.getItem('currentUserId')
-            const userId = userIdStr ? parseInt(userIdStr, 10) : null
-            if (userId) {
-              await window.api.setUserCourseFolder(userId, selectedPath)
-            }
-          } catch (e) {
-            console.error('Erro ao persistir courseFolderPath:', e)
-          }
         }
       } catch (error) {
         console.error('Error selecting folder:', error)
       }
     })
-  }
+  }, [setFolderPath])
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">User Information</h2>
+        <p className="text-sm text-muted-foreground">Your account details</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Details</CardTitle>
+          <CardDescription>Your current account information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="user-name">Name</Label>
+            <Input id="user-name" value={user?.name || ''} disabled />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="user-email">Email</Label>
+            <Input id="user-email" value={user?.email || ''} disabled />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div>
+        <h2 className="text-lg font-semibold mb-1">Course Folder</h2>
+        <p className="text-sm text-muted-foreground">Select the folder containing your courses</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Folder Path</CardTitle>
+          <CardDescription>Current course folder location</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="folder-path">Selected Folder</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="folder-path"
+                value={folderPath || ''}
+                placeholder="No folder selected"
+                readOnly
+                className={!isValid && folderPath ? 'border-destructive' : ''}
+              />
+              <Button onClick={handleSelectFolder} disabled={isPending || isValidating} size="icon">
+                {isPending || isValidating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FolderOpen className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {!isValid && folderPath && (
+              <p className="text-sm text-destructive">The selected folder is not accessible</p>
+            )}
+            {!folderPath && (
+              <p className="text-sm text-muted-foreground">Please select a folder to continue</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+const PlaceholderSection: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="space-y-6">
+    <div>
+      <h2 className="text-lg font-semibold mb-1">{title}</h2>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+    <Card>
+      <CardContent className="py-12 text-center">
+        <p className="text-muted-foreground">This section is coming soon</p>
+      </CardContent>
+    </Card>
+  </div>
+)
+
+const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
+  const [activeSection, setActiveSection] = useState<string>('account')
+
   const renderSectionContent = (): React.JSX.Element => {
     switch (activeSection) {
       case 'account':
-        return (
-          <div className="pt-12">
-            <div className="flex w-full justify-between items-center">
-              <div>
-                <Label>Select a course folder</Label>
-                <p className="text-sm text-muted-foreground">{folderPath}</p>
-              </div>
-              <Button onClick={() => handleSelectFolder()} disabled={isPending}>
-                select folder
-              </Button>
-            </div>
-          </div>
-        )
-
+        return <AccountSection />
       case 'notifications':
-        return <div>notifications</div>
+        return <PlaceholderSection title="Notifications" description="Manage your notification preferences" />
       case 'shortcuts':
-        return <div>shortcuts</div>
-
+        return <PlaceholderSection title="Keyboard Shortcuts" description="Customize keyboard shortcuts" />
       case 'security':
-        return <div>security</div>
-
+        return <PlaceholderSection title="Security" description="Manage security settings" />
       case 'appearance':
-        return <div>appearance</div>
-
+        return <PlaceholderSection title="Appearance" description="Customize the app appearance" />
       default:
-        return <div></div>
+        return <AccountSection />
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[800px] p-0 gap-0 overflow-hidden">
-        <div className="flex h-[80vh]">
+      <DialogContent className="w-[900px] max-w-[90vw] h-[85vh] p-0 gap-0 overflow-hidden">
+        <div className="flex h-full">
           <SidebarContent className="border-r-sidebar-border bg-sidebar w-64 flex-none">
-            <SidebarGroup>
-              <SidebarGroupLabel>Settings</SidebarGroupLabel>
+            <DialogHeader className="px-4 pt-4 pb-2">
+              <DialogTitle>Settings</DialogTitle>
+              <DialogDescription>Manage your application settings</DialogDescription>
+            </DialogHeader>
+            <SidebarGroup className="mt-4">
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {settingsItems.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        onClick={() => setActiveSection(item.id)}
-                        className={
-                          activeSection === item.id
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                            : ''
-                        }
-                      >
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {SETTINGS_SECTIONS.map((section) => {
+                    const Icon = section.icon
+                    return (
+                      <SidebarMenuItem key={section.id}>
+                        <SidebarMenuButton
+                          onClick={() => setActiveSection(section.id)}
+                          isActive={activeSection === section.id}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span>{section.title}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <div className="flex-1 p-4 w-full">{renderSectionContent()}</div>
+
+          <div className="flex-1 overflow-y-auto p-6">{renderSectionContent()}</div>
         </div>
       </DialogContent>
     </Dialog>

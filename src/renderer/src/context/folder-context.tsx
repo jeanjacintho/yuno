@@ -66,26 +66,36 @@ export const FolderProvider = ({ children }: FolderProviderProps): React.JSX.Ele
   }, [])
 
   const setFolderPathWithValidation = async (path: string | null): Promise<void> => {
-    setFolderPath(path)
+    setIsValidating(true)
 
-    if (path && window.api?.checkFolderExists) {
-      setIsValidating(true)
-      try {
+    try {
+      if (path && window.api?.checkFolderExists) {
         const exists = await window.api.checkFolderExists(path)
-        setIsValid(exists)
-
         if (!exists) {
           setFolderPath(null)
+          setIsValid(false)
+          return
         }
-      } catch (error) {
-        console.error('Error validating folder:', error)
-        setIsValid(false)
-        setFolderPath(null)
-      } finally {
-        setIsValidating(false)
+        setIsValid(true)
+      } else {
+        setIsValid(path !== null)
       }
-    } else {
-      setIsValid(path !== null)
+
+      setFolderPath(path)
+
+      const userIdStr =
+        typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null
+      const userId = userIdStr ? parseInt(userIdStr, 10) : null
+
+      if (userId && window.api?.setUserCourseFolder) {
+        await window.api.setUserCourseFolder(userId, path)
+      }
+    } catch (error) {
+      console.error('Error validating folder:', error)
+      setIsValid(false)
+      setFolderPath(null)
+    } finally {
+      setIsValidating(false)
     }
   }
 
