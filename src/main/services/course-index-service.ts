@@ -100,5 +100,3 @@ export class CourseIndexService {
     return job ?? null
   }
 }
-
-

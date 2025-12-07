@@ -6,16 +6,13 @@ import { Card } from '@renderer/components/ui/card'
 import { Button } from '@renderer/components/ui/button'
 import { ArrowLeft, Folder } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
-import type { FolderStructureInfo } from '../../../../shared/types/folder-structure'
 
 const CourseModules: React.FC = () => {
   const { folderPath } = useFolder()
   const { coursePath } = useParams<{ coursePath: string }>()
   const navigate = useNavigate()
   const [folderItems, setFolderItems] = useState<FolderItem[]>([])
-  const [structureInfo, setStructureInfo] = useState<FolderStructureInfo | null>(null)
   const [isPending, startTransition] = useTransition()
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const currentPath = coursePath ? decodeURIComponent(coursePath) : folderPath || ''
 
@@ -25,60 +22,30 @@ const CourseModules: React.FC = () => {
         return
       }
 
-      setIsAnalyzing(true)
       startTransition(async () => {
         if (!window.api) {
           return
         }
 
         try {
-          const [items, structure] = await Promise.all([
-            window.api.listFolderContents(currentPath),
-            window.api.analyzeFolderStructure(currentPath)
-          ])
+          if (folderPath && window.api.getIndexedFolder) {
+            const indexed = await window.api.getIndexedFolder(folderPath, currentPath)
+            if (indexed && indexed.length > 0) {
+              setFolderItems(indexed)
+              return
+            }
+          }
 
+          const items = await window.api.listFolderContents(currentPath)
           setFolderItems(items || [])
-          setStructureInfo(structure)
         } catch (error) {
           console.error('Error loading course content:', error)
-        } finally {
-          setIsAnalyzing(false)
         }
       })
     }
 
     loadCourseContent()
-  }, [currentPath, startTransition])
-
-  const getFolderType = (itemPath: string): 'course' | 'module' | 'lesson' => {
-    if (!structureInfo || !folderPath) {
-      return 'module'
-    }
-
-    const normalizedFolderPath = folderPath.replace(/\/$/, '')
-    const normalizedItemPath = itemPath.replace(/\/$/, '')
-
-    if (normalizedItemPath === normalizedFolderPath) {
-      return 'course'
-    }
-
-    if (!normalizedItemPath.startsWith(normalizedFolderPath)) {
-      return 'module'
-    }
-
-    const relativePath = normalizedItemPath.slice(normalizedFolderPath.length).replace(/^\//, '')
-    const depth = relativePath.split('/').filter((p) => p !== '').length
-
-    if (depth === structureInfo.videoDepth) {
-      return 'lesson'
-    }
-
-    if (depth > 0 && depth < structureInfo.videoDepth) {
-      return 'module'
-    }
-
-    return 'module'
-  }
+  }, [currentPath, folderPath, startTransition])
 
   const handleItemClick = (item: FolderItem): void => {
     if (item.type === 'folder') {
@@ -101,7 +68,7 @@ const CourseModules: React.FC = () => {
     }
   }
 
-  if (isPending || isAnalyzing) {
+  if (isPending) {
     return (
       <div className="p-6 w-full">
         <Skeleton className="h-8 w-48 mb-6" />
@@ -134,8 +101,7 @@ const CourseModules: React.FC = () => {
           {folderItems
             .filter((item) => item.type === 'folder')
             .map((item) => {
-              const itemType = getFolderType(item.path)
-              const itemCount = item.contents?.length || 0
+              const itemCount = item.contents?.length ?? 0
 
               return (
                 <Card
@@ -150,9 +116,7 @@ const CourseModules: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {itemType === 'lesson'
-                          ? `${itemCount} aula${itemCount !== 1 ? 's' : ''}`
-                          : `${itemCount} item${itemCount !== 1 ? 's' : ''}`}
+                        {itemCount > 0 ? `${itemCount} item${itemCount !== 1 ? 's' : ''}` : 'Pasta'}
                       </p>
                     </div>
                     <div className="flex-shrink-0">

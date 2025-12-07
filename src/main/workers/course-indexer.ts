@@ -69,5 +69,3 @@ parentPort.on('message', async (msg: IndexMessage) => {
     parentPort!.postMessage(errorMsg)
   }
 })
-
-
