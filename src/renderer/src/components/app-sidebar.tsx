@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, Command, FileQuestion, Gem, LayoutDashboard, Presentation, Send, Settings2 } from 'lucide-react'
+import { BookOpen, Command, FileQuestion, Gem, LayoutDashboard, Presentation, Search, Send, Settings2 } from 'lucide-react'
 
 import {
   Sidebar,
@@ -8,7 +8,8 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  useSidebar
 } from '@renderer/components/ui/sidebar'
 import { Input } from '@renderer/components/ui/input'
 import { NavMain } from './nav-main'
@@ -62,6 +63,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const { state } = useSidebar()
+  const isCollapsed = state === 'collapsed'
 
   const navSecondaryWithHandlers = data.navSecondary.map((item) => {
     if (item.title === 'Settings') {
@@ -95,7 +98,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>): 
         </SidebarHeader>
         <SidebarContent>
           <div className="px-2 pb-2">
-            <Input type="search" placeholder="Search..." className="w-full" />
+            {isCollapsed ? (
+              <SidebarMenuButton size="sm" className="w-full justify-center">
+                <Search className="size-4" />
+              </SidebarMenuButton>
+            ) : (
+              <Input type="search" placeholder="Search..." className="w-full" />
+            )}
           </div>
           <NavMain items={data.navMain} />
           <NavSecondary items={navSecondaryWithHandlers} className="mt-auto" />
