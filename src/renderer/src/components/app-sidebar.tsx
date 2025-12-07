@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Command, Gem, LayoutDashboard, Presentation, Send, Settings2 } from 'lucide-react'
+import { BookOpen, Command, FileQuestion, Gem, LayoutDashboard, Presentation, Send, Settings2 } from 'lucide-react'
 
 import {
   Sidebar,
@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from '@renderer/components/ui/sidebar'
+import { Input } from '@renderer/components/ui/input'
 import { NavMain } from './nav-main'
 import { NavUser } from './nav-user'
 import { NavSecondary } from './nav-secondary'
@@ -27,6 +28,16 @@ const data = {
       title: 'Courses',
       url: '/courses',
       icon: Presentation
+    },
+    {
+      title: 'Theoretical Study',
+      url: '/theoretical-study',
+      icon: BookOpen
+    },
+    {
+      title: 'Quiz',
+      url: '/quiz',
+      icon: FileQuestion
     }
   ],
   navSecondary: [
@@ -83,6 +94,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>): 
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
+          <div className="px-2 pb-2">
+            <Input type="search" placeholder="Search..." className="w-full" />
+          </div>
           <NavMain items={data.navMain} />
           <NavSecondary items={navSecondaryWithHandlers} className="mt-auto" />
         </SidebarContent>
