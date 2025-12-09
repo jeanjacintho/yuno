@@ -36,9 +36,7 @@ export class DatabaseService {
     }
   }
 
-  static async createSystemUser(
-    username: string
-  ): Promise<CreateUserResult> {
+  static async createSystemUser(username: string): Promise<CreateUserResult> {
     await this.ensureInitialized()
 
     try {
@@ -169,43 +167,47 @@ export class DatabaseService {
       this.initialized = false
     }
   }
-
-  // Course index helpers (background indexing + cache)
-
-  static async saveCourseIndex(
-    rootPath: string,
-    items: FolderItem[]
-  ): Promise<void> {
+  static async saveCourseIndex(rootPath: string, items: FolderItem[]): Promise<void> {
     try {
       await this.ensureInitialized()
-      const prisma = this.getPrisma() as PrismaClient & {
-        courseIndex: {
-          upsert: (args: any) => Promise<any>
-        }
-      }
+      const prisma = this.getPrisma()
 
       const dataJson = JSON.stringify(items)
 
-      await prisma.courseIndex.upsert({
+      // Type assertion needed until TypeScript picks up the regenerated Prisma types
+      const courseIndexModel = (prisma as any).courseIndex
+      if (!courseIndexModel) {
+        throw new Error(
+          'courseIndex model not found in Prisma client. Please run: npx prisma generate'
+        )
+      }
+
+      await courseIndexModel.upsert({
         where: { rootPath },
         update: { data: dataJson },
         create: { rootPath, data: dataJson }
       })
     } catch (error) {
       console.error('Erro ao salvar índice de curso:', error)
+      if (error instanceof Error && error.message.includes('courseIndex')) {
+        console.error('Prisma client may need to be regenerated. Run: npx prisma generate')
+      }
     }
   }
 
   static async getCourseIndex(rootPath: string): Promise<FolderItem[] | null> {
     try {
       await this.ensureInitialized()
-      const prisma = this.getPrisma() as PrismaClient & {
-        courseIndex: {
-          findUnique: (args: any) => Promise<{ data: string } | null>
-        }
+      const prisma = this.getPrisma()
+      const courseIndexModel = (prisma as any).courseIndex
+      if (!courseIndexModel) {
+        console.error(
+          'courseIndex model not found in Prisma client. Please run: npx prisma generate'
+        )
+        return null
       }
 
-      const record = await prisma.courseIndex.findUnique({
+      const record = await courseIndexModel.findUnique({
         where: { rootPath }
       })
 
@@ -217,8 +219,13 @@ export class DatabaseService {
       return parsed
     } catch (error) {
       console.error('Erro ao obter índice de curso:', error)
+      if (
+        error instanceof Error &&
+        (error.message.includes('courseIndex') || error.message.includes('Cannot read properties'))
+      ) {
+        console.error('Prisma client may need to be regenerated. Run: npx prisma generate')
+      }
       return null
     }
   }
 }
-

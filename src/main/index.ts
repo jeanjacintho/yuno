@@ -1,15 +1,28 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, protocol } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { setupDatabasePath } from './config/database'
 import { createMainWindow } from './window/window-manager'
 import { setupIpcHandlers } from './ipc/handlers'
 import { DatabaseService } from './services/database-service'
+import { setupVideoProtocol } from './protocol/video-protocol'
 
 if (process.platform === 'win32') {
   app.setAppUserModelId(app.getName())
 }
 
 setupDatabasePath()
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'video',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      corsEnabled: true
+    }
+  }
+])
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron')
@@ -18,6 +31,8 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // Registrar o protocolo antes de criar a janela
+  setupVideoProtocol()
   setupIpcHandlers()
   createMainWindow()
 

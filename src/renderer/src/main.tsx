@@ -7,6 +7,7 @@ import App from './App'
 import Dashboard from './pages/dashboard/dashboard'
 import Courses from './pages/courses/courses'
 import CourseModules from './pages/courses/course-modules'
+import VideoPlayer from './pages/courses/video-player'
 import LoginPage from './pages/auth/login'
 import AppLayout from './templates/app-layout'
 import RootLayout from './templates/root-layout'
@@ -39,6 +40,14 @@ createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedCourseRoute>
                   <CourseModules />
+                </ProtectedCourseRoute>
+              }
+            />
+            <Route
+              path="/courses/:coursePath/video/:videoPath"
+              element={
+                <ProtectedCourseRoute>
+                  <VideoPlayer />
                 </ProtectedCourseRoute>
               }
             />

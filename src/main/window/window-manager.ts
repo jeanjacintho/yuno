@@ -6,10 +6,10 @@ import { is } from '@electron-toolkit/utils'
 
 export function createMainWindow(): BrowserWindow {
   const preloadPath = join(__dirname, '../preload/index.js')
-  
+
   console.log('[Main] Preload path:', preloadPath)
   console.log('[Main] Preload exists:', existsSync(preloadPath))
-  
+
   if (!existsSync(preloadPath)) {
     console.error('[Main] ERRO: Preload não encontrado em:', preloadPath)
     console.error('[Main] __dirname:', __dirname)
@@ -25,16 +25,22 @@ export function createMainWindow(): BrowserWindow {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true
     }
   })
 
   mainWindow.webContents.on('did-finish-load', () => {
     console.log('[Main] Window finished loading')
-    mainWindow.webContents.executeJavaScript(`
+    mainWindow.webContents
+      .executeJavaScript(
+        `
       console.log('[Renderer] window.api available:', typeof window.api !== 'undefined');
       console.log('[Renderer] window.electron available:', typeof window.electron !== 'undefined');
-    `).catch(console.error)
+    `
+      )
+      .catch(console.error)
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -54,4 +60,3 @@ export function createMainWindow(): BrowserWindow {
 
   return mainWindow
 }
-
