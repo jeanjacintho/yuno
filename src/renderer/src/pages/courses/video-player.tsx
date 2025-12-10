@@ -2,8 +2,7 @@ import { useFolder } from '@renderer/context/folder-context'
 import React, { useEffect, useState, useTransition } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Skeleton } from '@renderer/components/ui/skeleton'
-import { Button } from '@renderer/components/ui/button'
-import { ArrowLeft, Play } from 'lucide-react'
+import { Play } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
 
 const VideoPlayer: React.FC = () => {
@@ -73,23 +72,6 @@ const VideoPlayer: React.FC = () => {
     }
   }
 
-  const handleBack = (): void => {
-    if (currentFolderPath && folderPath && currentFolderPath !== folderPath) {
-      // Calcula o caminho da pasta pai
-      const parentPath = currentFolderPath.split('/').slice(0, -1).join('/')
-
-      // Verifica se o caminho pai ainda está dentro da pasta raiz
-      if (parentPath && parentPath.startsWith(folderPath)) {
-        const encodedPath = encodeURIComponent(parentPath)
-        navigate(`/courses/${encodedPath}`)
-      } else {
-        navigate('/courses')
-      }
-    } else {
-      navigate('/courses')
-    }
-  }
-
   const formatDuration = (seconds?: number): string => {
     if (!seconds) return '--:--'
     const hours = Math.floor(seconds / 3600)
@@ -124,17 +106,6 @@ const VideoPlayer: React.FC = () => {
   return (
     <div className="flex h-full w-full overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 p-6 border-b">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={handleBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold truncate">
-              {currentVideo?.name || 'Selecione um vídeo'}
-            </h1>
-          </div>
-        </div>
-
         <div className="flex-shrink-0 flex items-center justify-center bg-black aspect-video w-full">
           {currentVideo ? (
             <video
