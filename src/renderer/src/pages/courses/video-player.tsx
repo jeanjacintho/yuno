@@ -2,7 +2,6 @@ import { useFolder } from '@renderer/context/folder-context'
 import React, { useEffect, useState, useTransition } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Skeleton } from '@renderer/components/ui/skeleton'
-import { Card } from '@renderer/components/ui/card'
 import { Button } from '@renderer/components/ui/button'
 import { ArrowLeft, Play } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
@@ -84,11 +83,9 @@ const VideoPlayer: React.FC = () => {
         const encodedPath = encodeURIComponent(parentPath)
         navigate(`/courses/${encodedPath}`)
       } else {
-        // Se não estiver dentro da pasta raiz, volta para a lista de cursos
         navigate('/courses')
       }
     } else {
-      // Se já estiver na pasta raiz, volta para a lista de cursos
       navigate('/courses')
     }
   }
@@ -171,53 +168,49 @@ const VideoPlayer: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-80 border-l bg-background flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 p-4 border-b bg-background z-10">
-          <h2 className="font-semibold text-lg">Vídeos da Aula</h2>
-          <p className="text-sm text-muted-foreground">{folderItems.length} vídeo(s)</p>
-        </div>
+      <div className="w-80 bg-background flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="p-4 space-y-2">
+          <div className="p-2">
             {folderItems.length === 0 ? (
-              <Card className="p-6 text-center">
-                <p className="text-muted-foreground">Nenhum vídeo encontrado nesta pasta.</p>
-              </Card>
+              <div className="p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum vídeo encontrado nesta pasta.
+                </p>
+              </div>
             ) : (
-              folderItems.map((video) => {
-                const isActive = currentVideo?.path === video.path
+              <div className="space-y-1">
+                {folderItems.map((video) => {
+                  const isActive = currentVideo?.path === video.path
 
-                return (
-                  <Card
-                    key={video.path}
-                    className={`p-3 cursor-pointer transition-colors ${
-                      isActive ? 'bg-accent border-primary' : 'hover:bg-accent/50'
-                    }`}
-                    onClick={() => handleVideoSelect(video)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`flex-shrink-0 w-10 h-10 rounded flex items-center justify-center ${
-                          isActive ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  return (
+                    <div
+                      key={video.path}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-accent/50 text-foreground'
+                      }`}
+                      onClick={() => handleVideoSelect(video)}
+                    >
+                      <Play
+                        className={`h-4 w-4 flex-shrink-0 ${
+                          isActive ? 'text-primary-foreground' : 'text-muted-foreground'
+                        }`}
+                      />
+                      <span className={`flex-1 text-sm truncate ${isActive ? 'font-medium' : ''}`}>
+                        {video.name}
+                      </span>
+                      <span
+                        className={`text-xs flex-shrink-0 ${
+                          isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'
                         }`}
                       >
-                        <Play className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3
-                          className={`font-medium text-sm mb-1 truncate ${
-                            isActive ? 'text-primary' : ''
-                          }`}
-                        >
-                          {video.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDuration(video.duration)}
-                        </p>
-                      </div>
+                        {formatDuration(video.duration)}
+                      </span>
                     </div>
-                  </Card>
-                )
-              })
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>
