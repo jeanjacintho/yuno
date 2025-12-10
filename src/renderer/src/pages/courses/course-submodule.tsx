@@ -7,7 +7,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Folder, Play } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
 
-const CourseModules: React.FC = () => {
+const CourseSubmodule: React.FC = () => {
   const { folderPath } = useFolder()
   const { coursePath } = useParams<{ coursePath: string }>()
   const navigate = useNavigate()
@@ -102,7 +102,6 @@ const CourseModules: React.FC = () => {
     return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
 
-
   if (isPending) {
     return (
       <div className="p-6 w-full">
@@ -120,7 +119,7 @@ const CourseModules: React.FC = () => {
     <div className="p-6 w-full">
       {folderItems.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">Nenhum módulo encontrado neste curso.</p>
+          <p className="text-muted-foreground">Nenhum conteúdo encontrado neste submódulo.</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -186,4 +185,5 @@ const CourseModules: React.FC = () => {
   )
 }
 
-export default CourseModules
+export default CourseSubmodule
+

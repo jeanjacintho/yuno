@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { fileTypeFromFile } from 'file-type'
-import getVideoDuration from 'get-video-duration'
+import { getVideoDurationInSeconds } from 'get-video-duration'
 import type { FolderItem } from '../../shared/types/index'
 import {
   VIDEO_EXTENSIONS,
@@ -135,7 +135,7 @@ export class FileProcessor {
 
       let duration: number | undefined
       try {
-        duration = await getVideoDuration(itemPath)
+        duration = await getVideoDurationInSeconds(itemPath)
       } catch (durationError) {
         console.error(`Could not get duration for ${itemPath}:`, durationError)
       }
