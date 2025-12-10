@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { Card } from '@renderer/components/ui/card'
 import { Button } from '@renderer/components/ui/button'
-import { ArrowLeft, Folder, Play } from 'lucide-react'
+import { Folder, Play } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
 
 const CourseModules: React.FC = () => {
@@ -102,19 +102,6 @@ const CourseModules: React.FC = () => {
     return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleBack = (): void => {
-    if (folderPath && currentPath !== folderPath) {
-      const parentPath = currentPath.split('/').slice(0, -1).join('/')
-      if (parentPath && parentPath.startsWith(folderPath)) {
-        const encodedPath = encodeURIComponent(parentPath)
-        navigate(`/courses/${encodedPath}`)
-      } else {
-        navigate('/courses')
-      }
-    } else {
-      navigate('/courses')
-    }
-  }
 
   if (isPending) {
     return (
@@ -129,17 +116,8 @@ const CourseModules: React.FC = () => {
     )
   }
 
-  const folderName = currentPath.split('/').pop() || 'Módulos'
-
   return (
     <div className="p-6 w-full">
-      <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold">{folderName}</h1>
-      </div>
-
       {folderItems.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-muted-foreground">Nenhum módulo encontrado neste curso.</p>
