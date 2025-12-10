@@ -41,7 +41,11 @@ const VideoPlayer: React.FC = () => {
             items = await window.api.listFolderContents(currentFolderPath)
           }
 
-          const videos = items.filter((item) => item.type === 'video')
+          const videos = items
+            .filter((item) => item.type === 'video')
+            .sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+            )
           setFolderItems(videos || [])
 
           if (currentVideoPath) {
