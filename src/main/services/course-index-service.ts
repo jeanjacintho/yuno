@@ -71,7 +71,11 @@ export class CourseIndexService {
         currentJob.totalFolders = msg.totalFolders
         currentJob.totalVideos = msg.totalVideos
 
+        // Salva no formato antigo (JSON) para compatibilidade
         await DatabaseService.saveCourseIndex(msg.rootPath, msg.items)
+
+        // Salva na estrutura estruturada (novo formato)
+        await DatabaseService.saveCourseStructure(msg.rootPath, msg.items)
       } else if (msg.type === 'error') {
         currentJob.status = 'failed'
         currentJob.error = msg.error

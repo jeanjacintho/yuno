@@ -38,16 +38,82 @@ const CourseModule: React.FC = () => {
         }
 
         try {
+          let items: FolderItem[] = []
+
+          // Tenta primeiro buscar do banco de dados
           if (folderPath && window.api.getIndexedFolder) {
             const indexed = await window.api.getIndexedFolder(folderPath, currentPath)
             if (indexed && indexed.length > 0) {
-              setFolderItems(indexed)
-              return
+              items = indexed
             }
           }
 
-          const items = await window.api.listFolderContents(currentPath)
+          // Se não encontrou no banco, lê do sistema de arquivos
+          if (items.length === 0) {
+            items = await window.api.listFolderContents(currentPath)
+
+            // Salva no banco para próxima vez
+            if (items.length > 0 && folderPath && window.api.saveCourseStructure) {
+              // Salva apenas se for a pasta raiz do curso
+              if (currentPath === folderPath) {
+                window.api.saveCourseStructure(folderPath, items).catch((error) => {
+                  console.error('Error saving course structure:', error)
+                })
+              }
+            }
+          }
+
           setFolderItems(items || [])
+
+          // Inicia o carregamento dos módulos em paralelo, sem bloquear
+          const folders = items.filter((item) => item.type === 'folder')
+
+          // Cada módulo é carregado de forma independente (como uma "thread")
+          folders.forEach((folder) => {
+            // Se já tem conteúdo carregado, não precisa carregar novamente
+            if (folder.contents) {
+              return
+            }
+
+            // Carrega cada módulo de forma assíncrona e independente
+            ;(async () => {
+              if (!window.api) {
+                return
+              }
+
+              try {
+                let subItems: FolderItem[] = []
+
+                // Tenta primeiro buscar do banco de dados
+                if (window.api.getVideosByFolderPath) {
+                  const dbItems = await window.api.getVideosByFolderPath(folder.path)
+                  if (dbItems && dbItems.length > 0) {
+                    subItems = dbItems
+                  }
+                }
+
+                // Se não encontrou no banco, tenta pelo método antigo
+                if (subItems.length === 0 && folderPath && window.api.getIndexedFolder) {
+                  const indexed = await window.api.getIndexedFolder(folderPath, folder.path)
+                  if (indexed && indexed.length > 0) {
+                    subItems = indexed
+                  }
+                }
+
+                // Se ainda não encontrou, lê do sistema de arquivos
+                if (subItems.length === 0 && window.api.listFolderContents) {
+                  subItems = await window.api.listFolderContents(folder.path)
+                }
+
+                setSubmoduleContents((prev) => ({
+                  ...prev,
+                  [folder.path]: subItems
+                }))
+              } catch (error) {
+                console.error(`Error loading contents for module ${folder.path}:`, error)
+              }
+            })()
+          })
         } catch (error) {
           console.error('Error loading module content:', error)
         }

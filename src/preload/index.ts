@@ -58,6 +58,15 @@ const api = {
   },
   getIndexedFolder: async (rootPath: string, folderPath: string): Promise<FolderItem[] | null> => {
     return await ipcRenderer.invoke('get-indexed-folder', rootPath, folderPath)
+  },
+  getVideosByFolderPath: async (folderPath: string): Promise<FolderItem[] | null> => {
+    return await ipcRenderer.invoke('get-videos-by-folder-path', folderPath)
+  },
+  saveCourseStructure: async (
+    rootPath: string,
+    items: FolderItem[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    return await ipcRenderer.invoke('save-course-structure', rootPath, items)
   }
 }
 

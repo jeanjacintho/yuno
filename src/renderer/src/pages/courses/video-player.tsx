@@ -97,13 +97,23 @@ const VideoPlayer: React.FC = () => {
           // Carrega a lista de vídeos para a sidebar da pasta do vídeo atual
           let items: FolderItem[] = []
 
-          if (folderPath && window.api.getIndexedFolder && folderToLoad) {
+          // Tenta primeiro buscar do banco de dados
+          if (window.api.getVideosByFolderPath && folderToLoad) {
+            const dbItems = await window.api.getVideosByFolderPath(folderToLoad)
+            if (dbItems && dbItems.length > 0) {
+              items = dbItems
+            }
+          }
+
+          // Se não encontrou no banco, tenta pelo método antigo
+          if (items.length === 0 && folderPath && window.api.getIndexedFolder && folderToLoad) {
             const indexed = await window.api.getIndexedFolder(folderPath, folderToLoad)
             if (indexed && indexed.length > 0) {
               items = indexed
             }
           }
 
+          // Se ainda não encontrou, lê do sistema de arquivos
           if (items.length === 0 && folderToLoad) {
             items = await window.api.listFolderContents(folderToLoad)
           }

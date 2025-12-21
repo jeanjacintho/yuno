@@ -1,5 +1,6 @@
 import { PrismaClient, type User } from '@prisma/client'
 import type { CreateUserResult, DatabaseResult, FolderItem } from '../../shared/types/index'
+import path from 'path'
 
 export class DatabaseService {
   private static prisma: PrismaClient | null = null
@@ -226,6 +227,371 @@ export class DatabaseService {
         console.error('Prisma client may need to be regenerated. Run: npx prisma generate')
       }
       return null
+    }
+  }
+
+  // Métodos para estrutura estruturada de cursos
+  static async saveCourseStructure(
+    rootPath: string,
+    items: FolderItem[]
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      // Processa cada item do nível raiz
+      for (const item of items) {
+        if (item.type === 'folder') {
+          // É um módulo
+          await this.saveModule(rootPath, item)
+        } else if (item.type === 'video') {
+          // Vídeo direto no curso (sem módulo)
+          await this.saveVideo(rootPath, item, null, null)
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Erro ao salvar estrutura de curso:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  private static async saveModule(
+    rootPath: string,
+    moduleItem: FolderItem
+  ): Promise<void> {
+    const prisma = this.getPrisma()
+
+    // Encontra ou cria o curso
+    let course = await prisma.course.findUnique({
+      where: { path: rootPath }
+    })
+
+    if (!course) {
+      course = await prisma.course.create({
+        data: {
+          name: path.basename(rootPath),
+          path: rootPath,
+          rootPath
+        }
+      })
+    }
+
+    // Cria ou atualiza o módulo
+    const module = await prisma.module.upsert({
+      where: { path: moduleItem.path },
+      update: {
+        name: moduleItem.name,
+        updatedAt: new Date()
+      },
+      create: {
+        name: moduleItem.name,
+        path: moduleItem.path,
+        courseId: course.id
+      }
+    })
+
+    // Processa conteúdos do módulo
+    if (moduleItem.contents) {
+      for (const content of moduleItem.contents) {
+        if (content.type === 'folder') {
+          // É um submodule
+          await this.saveSubmodule(module.id, content)
+        } else if (content.type === 'video') {
+          // Vídeo direto no módulo
+          await this.saveVideo(rootPath, content, module.id, null)
+        }
+      }
+    }
+  }
+
+  private static async saveSubmodule(
+    moduleId: number,
+    submoduleItem: FolderItem
+  ): Promise<void> {
+    const prisma = this.getPrisma()
+
+    const submodule = await prisma.submodule.upsert({
+      where: { path: submoduleItem.path },
+      update: {
+        name: submoduleItem.name,
+        updatedAt: new Date()
+      },
+      create: {
+        name: submoduleItem.name,
+        path: submoduleItem.path,
+        moduleId
+      }
+    })
+
+    // Processa vídeos do submodule
+    if (submoduleItem.contents) {
+      for (const content of submoduleItem.contents) {
+        if (content.type === 'video') {
+          await this.saveVideo('', content, moduleId, submodule.id)
+        }
+      }
+    }
+  }
+
+  private static async saveVideo(
+    rootPath: string,
+    videoItem: FolderItem,
+    moduleId: number | null,
+    submoduleId: number | null
+  ): Promise<void> {
+    const prisma = this.getPrisma()
+
+    await prisma.video.upsert({
+      where: { path: videoItem.path },
+      update: {
+        name: videoItem.name,
+        duration: videoItem.duration ?? null,
+        moduleId: moduleId ?? null,
+        submoduleId: submoduleId ?? null,
+        updatedAt: new Date()
+      },
+      create: {
+        name: videoItem.name,
+        path: videoItem.path,
+        duration: videoItem.duration ?? null,
+        moduleId: moduleId ?? null,
+        submoduleId: submoduleId ?? null
+      }
+    })
+  }
+
+  static async getCourseByPath(coursePath: string): Promise<FolderItem[] | null> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      const course = await prisma.course.findUnique({
+        where: { path: coursePath },
+        include: {
+          modules: {
+            include: {
+              submodules: {
+                include: {
+                  videos: true
+                }
+              },
+              videos: true
+            },
+            orderBy: {
+              name: 'asc'
+            }
+          }
+        }
+      })
+
+      if (!course) {
+        return null
+      }
+
+      // Converte para formato FolderItem
+      const items: FolderItem[] = course.modules.map((module) => {
+        const moduleItem: FolderItem = {
+          name: module.name,
+          path: module.path,
+          type: 'folder',
+          contents: []
+        }
+
+        // Adiciona submodules
+        const submoduleItems: FolderItem[] = module.submodules.map((submodule) => ({
+          name: submodule.name,
+          path: submodule.path,
+          type: 'folder',
+          contents: submodule.videos.map((video) => ({
+            name: video.name,
+            path: video.path,
+            type: 'video',
+            duration: video.duration ?? undefined
+          }))
+        }))
+
+        // Adiciona vídeos diretos do módulo
+        const moduleVideos: FolderItem[] = module.videos.map((video) => ({
+          name: video.name,
+          path: video.path,
+          type: 'video',
+          duration: video.duration ?? undefined
+        }))
+
+        moduleItem.contents = [...submoduleItems, ...moduleVideos]
+        return moduleItem
+      })
+
+      return items
+    } catch (error) {
+      console.error('Erro ao obter curso por path:', error)
+      return null
+    }
+  }
+
+  static async getModuleByPath(modulePath: string): Promise<FolderItem[] | null> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      const module = await prisma.module.findUnique({
+        where: { path: modulePath },
+        include: {
+          submodules: {
+            include: {
+              videos: true
+            },
+            orderBy: {
+              name: 'asc'
+            }
+          },
+          videos: {
+            orderBy: {
+              name: 'asc'
+            }
+          }
+        }
+      })
+
+      if (!module) {
+        return null
+      }
+
+      const items: FolderItem[] = []
+
+      // Adiciona submodules
+      for (const submodule of module.submodules) {
+        items.push({
+          name: submodule.name,
+          path: submodule.path,
+          type: 'folder',
+          contents: submodule.videos.map((video) => ({
+            name: video.name,
+            path: video.path,
+            type: 'video',
+            duration: video.duration ?? undefined
+          }))
+        })
+      }
+
+      // Adiciona vídeos diretos
+      for (const video of module.videos) {
+        items.push({
+          name: video.name,
+          path: video.path,
+          type: 'video',
+          duration: video.duration ?? undefined
+        })
+      }
+
+      return items
+    } catch (error) {
+      console.error('Erro ao obter módulo por path:', error)
+      return null
+    }
+  }
+
+  static async getSubmoduleByPath(submodulePath: string): Promise<FolderItem[] | null> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      const submodule = await prisma.submodule.findUnique({
+        where: { path: submodulePath },
+        include: {
+          videos: {
+            orderBy: {
+              name: 'asc'
+            }
+          }
+        }
+      })
+
+      if (!submodule) {
+        return null
+      }
+
+      return submodule.videos.map((video) => ({
+        name: video.name,
+        path: video.path,
+        type: 'video',
+        duration: video.duration ?? undefined
+      }))
+    } catch (error) {
+      console.error('Erro ao obter submodule por path:', error)
+      return null
+    }
+  }
+
+  static async getVideosByFolderPath(folderPath: string): Promise<FolderItem[] | null> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      // Tenta encontrar como submodule primeiro
+      const submodule = await prisma.submodule.findUnique({
+        where: { path: folderPath },
+        include: {
+          videos: {
+            orderBy: {
+              name: 'asc'
+            }
+          }
+        }
+      })
+
+      if (submodule) {
+        return submodule.videos.map((video) => ({
+          name: video.name,
+          path: video.path,
+          type: 'video',
+          duration: video.duration ?? undefined
+        }))
+      }
+
+      // Se não encontrou como submodule, tenta como module
+      const module = await prisma.module.findUnique({
+        where: { path: folderPath },
+        include: {
+          videos: {
+            orderBy: {
+              name: 'asc'
+            }
+          }
+        }
+      })
+
+      if (module) {
+        return module.videos.map((video) => ({
+          name: video.name,
+          path: video.path,
+          type: 'video',
+          duration: video.duration ?? undefined
+        }))
+      }
+
+      return null
+    } catch (error) {
+      console.error('Erro ao obter vídeos por path de pasta:', error)
+      return null
+    }
+  }
+
+  static async deleteCourseByRootPath(rootPath: string): Promise<void> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+
+      await prisma.course.deleteMany({
+        where: { rootPath }
+      })
+    } catch (error) {
+      console.error('Erro ao deletar curso por rootPath:', error)
     }
   }
 }

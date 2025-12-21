@@ -26,6 +26,11 @@ declare global {
         error?: string
       } | null>
       getIndexedFolder: (rootPath: string, folderPath: string) => Promise<FolderItem[] | null>
+      getVideosByFolderPath: (folderPath: string) => Promise<FolderItem[] | null>
+      saveCourseStructure: (
+        rootPath: string,
+        items: FolderItem[]
+      ) => Promise<{ success: boolean; error?: string }>
     }
   }
 }

@@ -27,3 +27,65 @@ model CourseIndex {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Course {
+  id        Int      @id @default(autoincrement())
+  name      String
+  path      String   @unique
+  rootPath  String   // Path da pasta raiz do curso
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  modules Module[]
+
+  @@index([rootPath])
+  @@index([path])
+}
+
+model Module {
+  id        Int      @id @default(autoincrement())
+  name      String
+  path      String   @unique
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submodules Submodule[]
+  videos     Video[]
+
+  @@index([courseId])
+  @@index([path])
+}
+
+model Submodule {
+  id        Int      @id @default(autoincrement())
+  name      String
+  path      String   @unique
+  moduleId  Int
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  videos Video[]
+
+  @@index([moduleId])
+  @@index([path])
+}
+
+model Video {
+  id          Int      @id @default(autoincrement())
+  name        String
+  path        String   @unique
+  duration    Int?     // Duração em segundos
+  moduleId    Int?
+  submoduleId Int?
+  module      Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  submodule   Submodule? @relation(fields: [submoduleId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([moduleId])
+  @@index([submoduleId])
+  @@index([path])
+}
