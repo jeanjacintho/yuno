@@ -28,46 +28,6 @@ const VideoPlayer: React.FC = () => {
   const currentVideoPath = videoPath ? decodeURIComponent(videoPath) : null
 
   useEffect(() => {
-    const getAllVideosRecursively = async (path: string): Promise<FolderItem[]> => {
-      if (!window.api || !path) {
-        return []
-      }
-
-      try {
-        let items: FolderItem[] = []
-
-        if (folderPath && window.api.getIndexedFolder) {
-          const indexed = await window.api.getIndexedFolder(folderPath, path)
-          if (indexed && indexed.length > 0) {
-            items = indexed
-          }
-        }
-
-        if (items.length === 0) {
-          items = await window.api.listFolderContents(path)
-        }
-
-        const videos: FolderItem[] = []
-
-        // Função auxiliar para processar recursivamente
-        const processItems = (itemList: FolderItem[]): void => {
-          for (const item of itemList) {
-            if (item.type === 'video') {
-              videos.push(item)
-            } else if (item.type === 'folder' && item.contents) {
-              processItems(item.contents)
-            }
-          }
-        }
-
-        processItems(items)
-        return videos
-      } catch (error) {
-        console.error('Error getting videos recursively:', error)
-        return []
-      }
-    }
-
     const loadVideos = async (): Promise<void> => {
       if (!window.api) {
         return
@@ -79,25 +39,30 @@ const VideoPlayer: React.FC = () => {
         }
 
         try {
+          // Determina a pasta para carregar os vídeos da sidebar
+          // Se temos um videoPath, usa o diretório pai do vídeo
+          // Caso contrário, usa o currentFolderPath
+          const folderToLoad = currentVideoPath
+            ? currentVideoPath.substring(0, currentVideoPath.lastIndexOf('/'))
+            : currentFolderPath
+
           // Se temos um videoPath, tenta carregar o vídeo diretamente
           if (currentVideoPath) {
             try {
-              // Obtém o diretório pai do vídeo
-              const parentDir = currentVideoPath.substring(0, currentVideoPath.lastIndexOf('/'))
               const videoName = currentVideoPath.substring(currentVideoPath.lastIndexOf('/') + 1)
 
-              // Lista o conteúdo do diretório pai
+              // Lista o conteúdo do diretório pai do vídeo
               let parentItems: FolderItem[] = []
 
               if (folderPath && window.api.getIndexedFolder) {
-                const indexed = await window.api.getIndexedFolder(folderPath, parentDir)
+                const indexed = await window.api.getIndexedFolder(folderPath, folderToLoad)
                 if (indexed && indexed.length > 0) {
                   parentItems = indexed
                 }
               }
 
               if (parentItems.length === 0) {
-                parentItems = await window.api.listFolderContents(parentDir)
+                parentItems = await window.api.listFolderContents(folderToLoad)
               }
 
               // Procura o vídeo na lista
@@ -129,33 +94,26 @@ const VideoPlayer: React.FC = () => {
             }
           }
 
-          // Carrega a lista de vídeos para a sidebar
+          // Carrega a lista de vídeos para a sidebar da pasta do vídeo atual
           let items: FolderItem[] = []
 
-          if (folderPath && window.api.getIndexedFolder && currentFolderPath) {
-            const indexed = await window.api.getIndexedFolder(folderPath, currentFolderPath)
+          if (folderPath && window.api.getIndexedFolder && folderToLoad) {
+            const indexed = await window.api.getIndexedFolder(folderPath, folderToLoad)
             if (indexed && indexed.length > 0) {
               items = indexed
             }
           }
 
-          if (items.length === 0 && currentFolderPath) {
-            items = await window.api.listFolderContents(currentFolderPath)
+          if (items.length === 0 && folderToLoad) {
+            items = await window.api.listFolderContents(folderToLoad)
           }
 
-          // Busca todos os vídeos recursivamente
-          const allVideos = await getAllVideosRecursively(currentFolderPath || folderPath || '')
-
-          const videos =
-            allVideos.length > 0
-              ? allVideos.sort((a, b) =>
-                  a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-                )
-              : items
-                  .filter((item) => item.type === 'video')
-                  .sort((a, b) =>
-                    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-                  )
+          // Filtra apenas os vídeos da pasta (não recursivo para a sidebar)
+          const videos = items
+            .filter((item) => item.type === 'video')
+            .sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+            )
 
           setFolderItems(videos || [])
 
