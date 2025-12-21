@@ -9,7 +9,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from '@renderer/components/ui/collapsible'
-import { Play, ChevronDown, ArrowLeft, FileText, Clock } from 'lucide-react'
+import { Play, ChevronDown, ArrowLeft, FileText, Clock, Loader } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
 import { cn } from '@renderer/lib/utils'
 
@@ -21,6 +21,7 @@ const CourseSubmodule: React.FC = () => {
   const [isPending, startTransition] = useTransition()
   const [expandedSubmodules, setExpandedSubmodules] = useState<Set<string>>(new Set())
   const [videoContents, setVideoContents] = useState<Record<string, FolderItem[]>>({})
+  const [loadingContents, setLoadingContents] = useState<Set<string>>(new Set())
 
   const currentPath = coursePath ? decodeURIComponent(coursePath) : folderPath || ''
   const title = currentPath.split('/').pop() || 'Module Content'
@@ -80,6 +81,9 @@ const CourseSubmodule: React.FC = () => {
                 return
               }
 
+              // Marca como carregando
+              setLoadingContents((prev) => new Set(prev).add(folder.path))
+
               try {
                 let subItems: FolderItem[] = []
 
@@ -110,6 +114,13 @@ const CourseSubmodule: React.FC = () => {
                 }))
               } catch (error) {
                 console.error(`Error loading contents for folder ${folder.path}:`, error)
+              } finally {
+                // Remove do estado de carregando
+                setLoadingContents((prev) => {
+                  const newSet = new Set(prev)
+                  newSet.delete(folder.path)
+                  return newSet
+                })
               }
             })()
           })
@@ -127,16 +138,29 @@ const CourseSubmodule: React.FC = () => {
       setExpandedSubmodules((prev) => new Set(prev).add(submodulePath))
 
       if (!videoContents[submodulePath] && window.api) {
+        // Marca como carregando
+        setLoadingContents((prev) => new Set(prev).add(submodulePath))
+
         try {
           let subItems: FolderItem[] = []
 
-          if (folderPath && window.api.getIndexedFolder) {
+          // Tenta primeiro buscar do banco de dados
+          if (window.api.getVideosByFolderPath) {
+            const dbItems = await window.api.getVideosByFolderPath(submodulePath)
+            if (dbItems && dbItems.length > 0) {
+              subItems = dbItems
+            }
+          }
+
+          // Se não encontrou no banco, tenta pelo método antigo
+          if (subItems.length === 0 && folderPath && window.api.getIndexedFolder) {
             const indexed = await window.api.getIndexedFolder(folderPath, submodulePath)
             if (indexed && indexed.length > 0) {
               subItems = indexed
             }
           }
 
+          // Se ainda não encontrou, lê do sistema de arquivos
           if (subItems.length === 0) {
             subItems = await window.api.listFolderContents(submodulePath, true)
           }
@@ -147,6 +171,13 @@ const CourseSubmodule: React.FC = () => {
           }))
         } catch (error) {
           console.error('Error loading video contents:', error)
+        } finally {
+          // Remove do estado de carregando
+          setLoadingContents((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(submodulePath)
+            return newSet
+          })
         }
       }
     } else {
@@ -226,7 +257,7 @@ const CourseSubmodule: React.FC = () => {
                     onOpenChange={(open) => handleToggleSubmodule(item.path, open)}
                     className="w-full"
                   >
-                    <Card className="rounded-lg overflow-hidden w-full">
+                    <Card className="rounded-lg overflow-hidden w-full py-0">
                       <CollapsibleTrigger className="w-full">
                         <div className="p-4 flex items-center gap-4 hover:bg-muted transition-colors">
                           <div className="h-7 w-7 rounded bg-muted flex items-center justify-center text-muted-foreground font-medium text-xs">
@@ -248,47 +279,50 @@ const CourseSubmodule: React.FC = () => {
                           />
                         </div>
                       </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="px-4 pb-4 pt-0">
-                          <div className="space-y-0.5 pt-1">
-                            {videos.length === 0 ? (
-                              <p className="text-xs text-muted-foreground pl-10">Empty folder</p>
-                            ) : (
-                              videos.map((video) => (
-                                <div
-                                  key={video.path}
-                                  onClick={() => video.type === 'video' && handleVideoClick(video)}
-                                  className={cn(
-                                    'flex items-center gap-4 px-4 py-2 rounded pl-10 cursor-pointer transition-colors',
-                                    'hover:bg-muted'
-                                  )}
-                                >
-                                  {video.type === 'video' ? (
-                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                      <Play className="h-3 w-3 text-primary ml-0.5" />
-                                    </div>
-                                  ) : (
-                                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                      <FileText className="h-3 w-3 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="text-xs font-medium text-foreground truncate">
-                                      {video.name}
-                                    </h4>
-                                    {video.duration && (
-                                      <div className="flex items-center gap-2 mt-0.5">
-                                        <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                                        <span className="text-xs text-muted-foreground">
-                                          {formatDuration(video.duration)}
-                                        </span>
-                                      </div>
-                                    )}
+                      <CollapsibleContent className="pb-0">
+                        <div className="space-y-0.5">
+                          {loadingContents.has(item.path) && videos.length === 0 ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 pl-10">
+                              <Loader className="h-3 w-3 animate-spin" />
+                              Loading contents...
+                            </div>
+                          ) : videos.length === 0 ? (
+                            <p className="text-xs text-muted-foreground pl-10 py-2">Empty folder</p>
+                          ) : (
+                            videos.map((video) => (
+                              <div
+                                key={video.path}
+                                onClick={() => video.type === 'video' && handleVideoClick(video)}
+                                className={cn(
+                                  'flex items-center gap-4 px-4 py-2 rounded pl-10 cursor-pointer transition-colors',
+                                  'hover:bg-muted'
+                                )}
+                              >
+                                {video.type === 'video' ? (
+                                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <Play className="h-3 w-3 text-primary ml-0.5" />
                                   </div>
+                                ) : (
+                                  <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                    <FileText className="h-3 w-3 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-xs font-medium text-foreground truncate">
+                                    {video.name}
+                                  </h4>
+                                  {video.duration && (
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatDuration(video.duration)}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                              ))
-                            )}
-                          </div>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </CollapsibleContent>
                     </Card>
