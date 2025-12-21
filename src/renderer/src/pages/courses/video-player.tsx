@@ -110,12 +110,29 @@ const VideoPlayer: React.FC = () => {
             const indexed = await window.api.getIndexedFolder(folderPath, folderToLoad)
             if (indexed && indexed.length > 0) {
               items = indexed
+              // Se os vídeos não têm duração, enriquece com duração
+              const videosWithoutDuration = items.filter(
+                (item) => item.type === 'video' && !item.duration
+              )
+              if (videosWithoutDuration.length > 0 && window.api.listFolderContents) {
+                const enrichedItems = await window.api.listFolderContents(folderToLoad, true)
+                const enrichedMap = new Map(enrichedItems.map((item) => [item.path, item.duration]))
+                items = items.map((item) => {
+                  if (item.type === 'video' && !item.duration) {
+                    return {
+                      ...item,
+                      duration: enrichedMap.get(item.path)
+                    }
+                  }
+                  return item
+                })
+              }
             }
           }
 
-          // Se ainda não encontrou, lê do sistema de arquivos
+          // Se ainda não encontrou, lê do sistema de arquivos com duração
           if (items.length === 0 && folderToLoad) {
-            items = await window.api.listFolderContents(folderToLoad)
+            items = await window.api.listFolderContents(folderToLoad, true)
           }
 
           // Filtra apenas os vídeos da pasta (não recursivo para a sidebar)
