@@ -17,8 +17,11 @@ const api = {
   selectFolder: async (): Promise<string | null> => {
     return await ipcRenderer.invoke('select-folder')
   },
-  listFolderContents: async (folderPath: string): Promise<FolderItem[]> => {
-    return await ipcRenderer.invoke('list-folder-contents', folderPath)
+  listFolderContents: async (
+    folderPath: string,
+    includeDuration?: boolean
+  ): Promise<FolderItem[]> => {
+    return await ipcRenderer.invoke('list-folder-contents', folderPath, includeDuration)
   },
   testDatabaseConnection: async (): Promise<boolean> => {
     return await ipcRenderer.invoke('test-database-connection')
@@ -53,10 +56,7 @@ const api = {
   getCourseIndexStatus: async (jobId: string) => {
     return await ipcRenderer.invoke('get-course-index-status', jobId)
   },
-  getIndexedFolder: async (
-    rootPath: string,
-    folderPath: string
-  ): Promise<FolderItem[] | null> => {
+  getIndexedFolder: async (rootPath: string, folderPath: string): Promise<FolderItem[] | null> => {
     return await ipcRenderer.invoke('get-indexed-folder', rootPath, folderPath)
   }
 }

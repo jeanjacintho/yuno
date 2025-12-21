@@ -14,9 +14,7 @@ export class FileProcessor {
    * Non-recursive listing used by the renderer for fast, first-level views.
    * Does not compute video duration to keep it lightweight.
    */
-  static async getFolderContents(
-    currentPath: string
-  ): Promise<FolderItem[]> {
+  static async getFolderContents(currentPath: string): Promise<FolderItem[]> {
     try {
       const items = await fs.readdir(currentPath)
 
@@ -58,9 +56,7 @@ export class FileProcessor {
         })
       )
 
-      return processItems.filter(
-        (item): item is FolderItem => item !== null
-      )
+      return processItems.filter((item): item is FolderItem => item !== null)
     } catch (error) {
       console.error('Error in getFolderContents:', error)
       return []
@@ -70,9 +66,7 @@ export class FileProcessor {
   /**
    * Recursive, full scan used by the background indexer.
    */
-  static async getFolderContentsRecursively(
-    currentPath: string
-  ): Promise<FolderItem[]> {
+  static async getFolderContentsRecursively(currentPath: string): Promise<FolderItem[]> {
     try {
       const items = await fs.readdir(currentPath)
 
@@ -86,9 +80,7 @@ export class FileProcessor {
           const stats = await fs.stat(itemPath)
 
           if (stats.isDirectory()) {
-            const subContents = await this.getFolderContentsRecursively(
-              itemPath
-            )
+            const subContents = await this.getFolderContentsRecursively(itemPath)
             return {
               name: item,
               path: itemPath,
@@ -113,9 +105,7 @@ export class FileProcessor {
         })
       )
 
-      return processItems.filter(
-        (item): item is FolderItem => item !== null
-      )
+      return processItems.filter((item): item is FolderItem => item !== null)
     } catch (error) {
       console.error('Error in getFolderContentsRecursively:', error)
       return []
@@ -151,5 +141,24 @@ export class FileProcessor {
       return null
     }
   }
-}
 
+  static async enrichVideosWithDuration(items: FolderItem[]): Promise<FolderItem[]> {
+    return Promise.all(
+      items.map(async (item) => {
+        if (item.type === 'video' && !item.duration) {
+          try {
+            const duration = await getVideoDurationInSeconds(item.path)
+            return {
+              ...item,
+              duration
+            }
+          } catch (error) {
+            console.error(`Could not get duration for ${item.path}:`, error)
+            return item
+          }
+        }
+        return item
+      })
+    )
+  }
+}

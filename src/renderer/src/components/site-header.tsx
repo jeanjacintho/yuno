@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { SidebarIcon } from 'lucide-react'
+import { SidebarIcon, Flame } from 'lucide-react'
 import { Button } from './ui/button'
+import { Badge } from './ui/badge'
 import { useSidebar } from './ui/sidebar'
 import {
   Breadcrumb,
@@ -22,6 +23,7 @@ export function SiteHeader(): React.ReactElement {
   const [breadcrumbItems, setBreadcrumbItems] = useState<Array<{ label: string; path?: string }>>(
     []
   )
+  const [streakCount, setStreakCount] = useState<number>(0)
 
   useEffect(() => {
     const items: Array<{ label: string; path?: string }> = []
@@ -118,6 +120,12 @@ export function SiteHeader(): React.ReactElement {
             })}
           </BreadcrumbList>
         </Breadcrumb>
+        <div className="ml-auto flex items-center">
+          <Badge variant="secondary" className="gap-1.5">
+            <Flame className="h-3.5 w-3.5" />
+            <span>{streakCount}</span>
+          </Badge>
+        </div>
       </div>
     </header>
   )

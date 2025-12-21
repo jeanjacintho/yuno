@@ -32,9 +32,13 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle(
     'list-folder-contents',
-    async (_event, folderPath: string): Promise<FolderItem[]> => {
+    async (_event, folderPath: string, includeDuration = false): Promise<FolderItem[]> => {
       try {
-        return await FileProcessor.getFolderContents(folderPath)
+        const items = await FileProcessor.getFolderContents(folderPath)
+        if (includeDuration) {
+          return await FileProcessor.enrichVideosWithDuration(items)
+        }
+        return items
       } catch (error) {
         console.error('Error listing folder contents:', error)
         return []

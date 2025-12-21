@@ -7,7 +7,7 @@ declare global {
   interface Window {
     api?: {
       selectFolder: () => Promise<string | null>
-      listFolderContents: (folderPath: string) => Promise<FolderItem[]>
+      listFolderContents: (folderPath: string, includeDuration?: boolean) => Promise<FolderItem[]>
       testDatabaseConnection: () => Promise<boolean>
       getAllUsers: () => Promise<User[]>
       getSystemUsername: () => Promise<SystemUsernameResult>

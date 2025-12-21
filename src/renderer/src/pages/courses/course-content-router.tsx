@@ -81,6 +81,7 @@ const CourseContentRouter: React.FC = () => {
                     break
                   }
                 } catch (error) {
+                  console.error('Error checking subfolder contents:', error)
                   continue
                 }
               }
@@ -121,4 +122,3 @@ const CourseContentRouter: React.FC = () => {
 }
 
 export default CourseContentRouter
-
