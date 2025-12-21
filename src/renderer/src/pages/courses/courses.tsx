@@ -40,20 +40,31 @@ const Courses: React.FC = () => {
 
   if (isPending) {
     return (
-      <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i} className="p-6 space-y-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-12 w-12 rounded-lg" />
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-              </div>
+      <div className="min-h-screen bg-background p-4 w-full">
+        <div className="max-w-7xl mx-auto space-y-4 w-full">
+          <div className="flex items-center justify-between">
+            <div>
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-4 w-64" />
             </div>
-            <Skeleton className="h-2 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </Card>
-        ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="p-6 space-y-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+                <Skeleton className="h-2 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
