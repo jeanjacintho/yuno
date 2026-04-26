@@ -4,10 +4,19 @@ import { useNavigate } from 'react-router-dom'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { Card } from '@renderer/components/ui/card'
 import { Button } from '@renderer/components/ui/button'
-import { Folder, MoreHorizontal, PlayCircle } from 'lucide-react'
+import { Folder, MoreHorizontal, PlayCircle, Sparkles } from 'lucide-react'
 import type { FolderItem } from '../../../../shared/types/index'
 import { Progress } from '@renderer/components/ui/progress'
 import { cn } from '@renderer/lib/utils'
+
+const COURSE_ACCENT_STYLES = [
+  'bg-sky-200/90 text-sky-900 ring-sky-300/50',
+  'bg-lime-200/90 text-lime-900 ring-lime-300/50',
+  'bg-violet-200/90 text-violet-900 ring-violet-300/50',
+  'bg-amber-200/90 text-amber-900 ring-amber-300/50',
+  'bg-rose-200/90 text-rose-900 ring-rose-300/50',
+  'bg-cyan-200/90 text-cyan-900 ring-cyan-300/50'
+] as const
 
 const Courses: React.FC = () => {
   const { folderPath } = useFolder()
@@ -40,7 +49,7 @@ const Courses: React.FC = () => {
 
   if (isPending) {
     return (
-      <div className="min-h-screen bg-background p-4 w-full">
+      <div className="min-h-screen w-full bg-[linear-gradient(180deg,var(--background)_0%,#dfe8f2_100%)] p-4">
         <div className="max-w-7xl mx-auto space-y-4 w-full">
           <div className="flex items-center justify-between">
             <div>
@@ -70,33 +79,40 @@ const Courses: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Courses</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Continue learning where you left off.
+    <div className="min-h-screen bg-[linear-gradient(180deg,var(--background)_0%,#dfe8f2_100%)] p-4">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-foreground flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-lime-200/90 text-lime-900 ring-2 ring-lime-400/50">
+                <Sparkles className="size-5" />
+              </span>
+              Meus cursos
+            </h1>
+            <p className="text-sm font-semibold text-muted-foreground">
+              Continue de onde parou e ganhe XP a cada aula.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {folderItems.map((item) => {
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {folderItems.map((item, index) => {
+            const accentClass = COURSE_ACCENT_STYLES[index % COURSE_ACCENT_STYLES.length]
             return (
               <Card
                 key={item.path}
-                className="group relative overflow-hidden hover:shadow-md transition-all duration-200"
+                className="group yuno-surface border-border/90 ring-primary/0 transition-all duration-200 hover:ring-2 hover:ring-primary/30"
               >
-                <div className="p-4 space-y-3">
+                <div className="space-y-3 p-4">
                   <div className="flex items-start justify-between">
                     <div
                       className={cn(
-                        'h-9 w-9 rounded-lg flex items-center justify-center transition-colors',
-                        'bg-muted text-muted-foreground group-hover:bg-foreground group-hover:text-background'
+                        'flex h-12 w-12 items-center justify-center rounded-2xl ring-2 transition-transform',
+                        'group-hover:scale-105',
+                        accentClass
                       )}
                     >
-                      <Folder className="h-4 w-4" />
+                      <Folder className="h-5 w-5" />
                     </div>
                     <Button
                       variant="ghost"
@@ -108,33 +124,33 @@ const Courses: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-base text-foreground line-clamp-1 mb-0.5">
+                    <h3 className="text-foreground mb-0.5 line-clamp-1 text-base font-extrabold">
                       {item.name}
                     </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {item.contents?.length || 0} modules
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      {item.contents?.length || 0} módulos
                     </p>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                      <span>Progress</span>
+                  <div className="space-y-1.5">
+                    <div className="text-muted-foreground flex justify-between text-xs font-extrabold">
+                      <span>Progresso</span>
                       <span className="text-foreground">0%</span>
                     </div>
-                    <Progress value={0} className="h-1" />
+                    <Progress value={0} className="h-2.5" />
                   </div>
 
                   <Button
                     size="sm"
-                    className="w-full gap-1.5 bg-muted text-foreground hover:bg-foreground hover:text-background border-0 transition-all duration-200 text-xs h-8"
-                    variant="outline"
+                    className="h-9 w-full gap-2 normal-case"
+                    variant="default"
                     onClick={() => {
                       const encodedPath = encodeURIComponent(item.path)
                       navigate(`/courses/${encodedPath}`)
                     }}
                   >
-                    <PlayCircle className="h-3.5 w-3.5" />
-                    Continue Learning
+                    <PlayCircle className="size-4" />
+                    Continuar
                   </Button>
                 </div>
               </Card>

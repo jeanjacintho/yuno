@@ -23,22 +23,26 @@ const data = {
       title: 'Dashboard',
       url: '/dashboard',
       icon: LayoutDashboard,
-      isActive: true
+      isActive: true,
+      iconClassName: 'bg-sky-200/90 text-sky-900'
     },
     {
       title: 'Courses',
       url: '/courses',
-      icon: Presentation
+      icon: Presentation,
+      iconClassName: 'bg-lime-200/90 text-lime-900'
     },
     {
       title: 'Theoretical Study',
       url: '/theoretical-study',
-      icon: BookOpen
+      icon: BookOpen,
+      iconClassName: 'bg-violet-200/90 text-violet-900'
     },
     {
       title: 'Quiz',
       url: '/quiz',
-      icon: FileQuestion
+      icon: FileQuestion,
+      iconClassName: 'bg-amber-200/90 text-amber-900'
     }
   ],
   navSecondary: [
@@ -47,7 +51,7 @@ const data = {
       secondtitle: '$12/month',
       url: '#',
       icon: Gem,
-      class: 'bg-primary/10 text-primary font-bold'
+      class: '!font-extrabold !border-2 !border-lime-300/70 !bg-lime-100 !text-lime-900 !rounded-2xl'
     },
     {
       title: 'Support',
@@ -84,12 +88,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>): 
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <a href="#">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <Command className="size-4" />
+                  <div className="from-primary to-lime-500 text-primary-foreground flex aspect-square size-10 items-center justify-center rounded-2xl bg-gradient-to-br shadow-sm ring-2 ring-lime-300/60">
+                    <Command className="size-5" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">Yuno</span>
-                    <span className="truncate text-xs">LMS platafform</span>
+                    <span className="truncate font-extrabold tracking-tight">Yuno</span>
+                    <span className="text-muted-foreground truncate text-xs font-semibold">
+                      Aprenda jogando
+                    </span>
                   </div>
                 </a>
               </SidebarMenuButton>
