@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { User } from '@prisma/client'
+import type { User } from '../generated/prisma/client'
 import type {
   FolderItem,
   SystemUsernameResult,

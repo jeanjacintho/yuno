@@ -1,4 +1,5 @@
-import { PrismaClient, type User } from '@prisma/client'
+import { PrismaClient, type User } from '../../generated/prisma/client'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import type {
   CreateUserResult,
   DatabaseResult,
@@ -21,13 +22,11 @@ export class DatabaseService {
 
   private static getPrisma(): PrismaClient {
     if (!this.prisma) {
-      this.prisma = new PrismaClient({
-        datasources: {
-          db: {
-            url: process.env.DATABASE_URL
-          }
-        }
-      })
+      const adapter = new PrismaBetterSqlite3(
+        { url: process.env.DATABASE_URL ?? 'file:./prisma/dev.db' },
+        { timestampFormat: 'unixepoch-ms' }
+      )
+      this.prisma = new PrismaClient({ adapter })
     }
     return this.prisma
   }
@@ -180,15 +179,7 @@ export class DatabaseService {
 
       const dataJson = JSON.stringify(items)
 
-      // Type assertion needed until TypeScript picks up the regenerated Prisma types
-      const courseIndexModel = (prisma as any).courseIndex
-      if (!courseIndexModel) {
-        throw new Error(
-          'courseIndex model not found in Prisma client. Please run: npx prisma generate'
-        )
-      }
-
-      await courseIndexModel.upsert({
+      await prisma.courseIndex.upsert({
         where: { rootPath },
         update: { data: dataJson },
         create: { rootPath, data: dataJson }
@@ -205,15 +196,8 @@ export class DatabaseService {
     try {
       await this.ensureInitialized()
       const prisma = this.getPrisma()
-      const courseIndexModel = (prisma as any).courseIndex
-      if (!courseIndexModel) {
-        console.error(
-          'courseIndex model not found in Prisma client. Please run: npx prisma generate'
-        )
-        return null
-      }
 
-      const record = await courseIndexModel.findUnique({
+      const record = await prisma.courseIndex.findUnique({
         where: { rootPath }
       })
 

@@ -1,6 +1,6 @@
 import type { FolderItem } from '../../../shared/types'
 import type { FolderStructureInfo } from '../../../shared/types/folder-structure'
-import type { User } from '@prisma/client'
+import type { User } from '../../../generated/prisma/client'
 import type {
   SystemUsernameResult,
   CreateUserResult,
