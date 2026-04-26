@@ -1,5 +1,10 @@
 import { PrismaClient, type User } from '@prisma/client'
-import type { CreateUserResult, DatabaseResult, FolderItem } from '../../shared/types/index'
+import type {
+  CreateUserResult,
+  DatabaseResult,
+  FolderItem,
+  VideoProgressState
+} from '../../shared/types/index'
 import path from 'path'
 
 export class DatabaseService {
@@ -237,7 +242,6 @@ export class DatabaseService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       await this.ensureInitialized()
-      const prisma = this.getPrisma()
 
       // Processa cada item do nível raiz
       for (const item of items) {
@@ -260,10 +264,7 @@ export class DatabaseService {
     }
   }
 
-  private static async saveModule(
-    rootPath: string,
-    moduleItem: FolderItem
-  ): Promise<void> {
+  private static async saveModule(rootPath: string, moduleItem: FolderItem): Promise<void> {
     const prisma = this.getPrisma()
 
     // Encontra ou cria o curso
@@ -309,10 +310,7 @@ export class DatabaseService {
     }
   }
 
-  private static async saveSubmodule(
-    moduleId: number,
-    submoduleItem: FolderItem
-  ): Promise<void> {
+  private static async saveSubmodule(moduleId: number, submoduleItem: FolderItem): Promise<void> {
     const prisma = this.getPrisma()
 
     const submodule = await prisma.submodule.upsert({
@@ -339,7 +337,7 @@ export class DatabaseService {
   }
 
   private static async saveVideo(
-    rootPath: string,
+    _rootPath: string,
     videoItem: FolderItem,
     moduleId: number | null,
     submoduleId: number | null
@@ -592,6 +590,71 @@ export class DatabaseService {
       })
     } catch (error) {
       console.error('Erro ao deletar curso por rootPath:', error)
+    }
+  }
+
+  static async getVideoProgressForUser(
+    userId: number,
+    videoPaths: string[]
+  ): Promise<Record<string, VideoProgressState>> {
+    if (videoPaths.length === 0) {
+      return {}
+    }
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+      const rows = await prisma.videoProgress.findMany({
+        where: {
+          userId,
+          videoPath: { in: videoPaths }
+        }
+      })
+      const map: Record<string, VideoProgressState> = {}
+      for (const row of rows) {
+        map[row.videoPath] = {
+          lastPositionSec: row.lastPositionSec,
+          completed: row.completed
+        }
+      }
+      return map
+    } catch (error) {
+      console.error('Erro ao obter progresso de vídeos:', error)
+      return {}
+    }
+  }
+
+  static async upsertVideoProgress(
+    userId: number,
+    videoPath: string,
+    lastPositionSec: number,
+    completed: boolean
+  ): Promise<DatabaseResult> {
+    try {
+      await this.ensureInitialized()
+      const prisma = this.getPrisma()
+      const safeTime = Math.max(0, lastPositionSec)
+      await prisma.videoProgress.upsert({
+        where: {
+          userId_videoPath: { userId, videoPath }
+        },
+        create: {
+          userId,
+          videoPath,
+          lastPositionSec: safeTime,
+          completed
+        },
+        update: {
+          lastPositionSec: safeTime,
+          completed
+        }
+      })
+      return { success: true }
+    } catch (error) {
+      console.error('Erro ao salvar progresso do vídeo:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
     }
   }
 }

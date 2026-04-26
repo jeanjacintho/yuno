@@ -4,7 +4,8 @@ import type {
   FolderItem,
   SystemUsernameResult,
   CreateUserResult,
-  DatabaseResult
+  DatabaseResult,
+  VideoProgressState
 } from '../../shared/types'
 import type { FolderStructureInfo } from '../../shared/types/folder-structure'
 
@@ -20,20 +21,30 @@ interface Api {
   checkFolderExists: (folderPath: string) => Promise<boolean>
   analyzeFolderStructure: (folderPath: string) => Promise<FolderStructureInfo | null>
   startCourseIndex: (rootPath: string) => Promise<{ jobId?: string; error?: string }>
-  getCourseIndexStatus: (
-    jobId: string
-  ) => Promise<
-    | {
-        id: string
-        rootPath: string
-        status: 'pending' | 'running' | 'completed' | 'failed'
-        totalFolders?: number
-        totalVideos?: number
-        error?: string
-      }
-    | null
-  >
+  getCourseIndexStatus: (jobId: string) => Promise<{
+    id: string
+    rootPath: string
+    status: 'pending' | 'running' | 'completed' | 'failed'
+    totalFolders?: number
+    totalVideos?: number
+    error?: string
+  } | null>
   getIndexedFolder: (rootPath: string, folderPath: string) => Promise<FolderItem[] | null>
+  getVideosByFolderPath: (folderPath: string) => Promise<FolderItem[] | null>
+  saveCourseStructure: (
+    rootPath: string,
+    items: FolderItem[]
+  ) => Promise<{ success: boolean; error?: string }>
+  getVideoProgressBatch: (
+    userId: number,
+    videoPaths: string[]
+  ) => Promise<Record<string, VideoProgressState>>
+  upsertVideoProgress: (
+    userId: number,
+    videoPath: string,
+    lastPositionSec: number,
+    completed: boolean
+  ) => Promise<DatabaseResult>
 }
 
 declare global {

@@ -1,7 +1,12 @@
 import type { FolderItem } from '../../../shared/types'
 import type { FolderStructureInfo } from '../../../shared/types/folder-structure'
 import type { User } from '@prisma/client'
-import type { SystemUsernameResult, CreateUserResult, DatabaseResult } from '../../../shared/types'
+import type {
+  SystemUsernameResult,
+  CreateUserResult,
+  DatabaseResult,
+  VideoProgressState
+} from '../../../shared/types'
 
 declare global {
   interface Window {
@@ -31,6 +36,16 @@ declare global {
         rootPath: string,
         items: FolderItem[]
       ) => Promise<{ success: boolean; error?: string }>
+      getVideoProgressBatch: (
+        userId: number,
+        videoPaths: string[]
+      ) => Promise<Record<string, VideoProgressState>>
+      upsertVideoProgress: (
+        userId: number,
+        videoPath: string,
+        lastPositionSec: number,
+        completed: boolean
+      ) => Promise<DatabaseResult>
     }
   }
 }

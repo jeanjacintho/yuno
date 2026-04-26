@@ -4,7 +4,8 @@ import type {
   FolderItem,
   SystemUsernameResult,
   CreateUserResult,
-  DatabaseResult
+  DatabaseResult,
+  VideoProgressState
 } from '../shared/types'
 import type { FolderStructureInfo } from '../shared/types/folder-structure'
 import type { User } from '@prisma/client'
@@ -67,6 +68,26 @@ const api = {
     items: FolderItem[]
   ): Promise<{ success: boolean; error?: string }> => {
     return await ipcRenderer.invoke('save-course-structure', rootPath, items)
+  },
+  getVideoProgressBatch: async (
+    userId: number,
+    videoPaths: string[]
+  ): Promise<Record<string, VideoProgressState>> => {
+    return await ipcRenderer.invoke('get-video-progress-batch', userId, videoPaths)
+  },
+  upsertVideoProgress: async (
+    userId: number,
+    videoPath: string,
+    lastPositionSec: number,
+    completed: boolean
+  ): Promise<DatabaseResult> => {
+    return await ipcRenderer.invoke(
+      'upsert-video-progress',
+      userId,
+      videoPath,
+      lastPositionSec,
+      completed
+    )
   }
 }
 

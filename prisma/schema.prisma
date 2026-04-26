@@ -8,22 +8,39 @@ datasource db {
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
-  name            String
-  isActive        Boolean  @default(true)
-  lastLoginAt     DateTime?
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  name             String
+  isActive         Boolean   @default(true)
+  lastLoginAt      DateTime?
   courseFolderPath String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  videoProgress VideoProgress[]
 
   @@map("users")
+}
+
+model VideoProgress {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoPath       String
+  lastPositionSec Float    @default(0) @map("lastTime")
+  completed       Boolean  @default(false) @map("isCompleted")
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, videoPath])
+  @@index([userId])
+  @@index([videoPath])
+  @@map("VideoProgress")
 }
 
 model CourseIndex {
   id        Int      @id @default(autoincrement())
   rootPath  String   @unique
-  data      String   // JSON-serialized FolderItem[]
+  data      String // JSON-serialized FolderItem[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -32,7 +49,7 @@ model Course {
   id        Int      @id @default(autoincrement())
   name      String
   path      String   @unique
-  rootPath  String   // Path da pasta raiz do curso
+  rootPath  String // Path da pasta raiz do curso
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -74,16 +91,16 @@ model Submodule {
 }
 
 model Video {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   name        String
-  path        String   @unique
-  duration    Int?     // Duração em segundos
+  path        String     @unique
+  duration    Int? // Duração em segundos
   moduleId    Int?
   submoduleId Int?
-  module      Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module      Module?    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   submodule   Submodule? @relation(fields: [submoduleId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@index([moduleId])
   @@index([submoduleId])

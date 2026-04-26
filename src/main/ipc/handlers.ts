@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs'
 import { FileProcessor } from '../services/file-processor'
 import { DatabaseService } from '../services/database-service'
 import { CourseIndexService } from '../services/course-index-service'
-import type { FolderItem } from '../../shared/types'
+import type { FolderItem, VideoProgressState } from '../../shared/types'
 
 export function setupIpcHandlers(): void {
   ipcMain.handle('select-folder', async () => {
@@ -195,6 +195,48 @@ export function setupIpcHandlers(): void {
         return await DatabaseService.saveCourseStructure(rootPath, items)
       } catch (error) {
         console.error('Error saving course structure:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'get-video-progress-batch',
+    async (
+      _event,
+      userId: number,
+      videoPaths: string[]
+    ): Promise<Record<string, VideoProgressState>> => {
+      try {
+        return await DatabaseService.getVideoProgressForUser(userId, videoPaths)
+      } catch (error) {
+        console.error('Error getting video progress batch:', error)
+        return {}
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'upsert-video-progress',
+    async (
+      _event,
+      userId: number,
+      videoPath: string,
+      lastPositionSec: number,
+      completed: boolean
+    ) => {
+      try {
+        return await DatabaseService.upsertVideoProgress(
+          userId,
+          videoPath,
+          lastPositionSec,
+          completed
+        )
+      } catch (error) {
+        console.error('Error upserting video progress:', error)
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'

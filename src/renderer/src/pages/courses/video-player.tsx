@@ -1,5 +1,6 @@
 import { useFolder } from '@renderer/context/folder-context'
-import React, { useEffect, useState, useTransition } from 'react'
+import { useUser } from '@renderer/context/user-context'
+import React, { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import {
@@ -12,20 +13,86 @@ import {
   ChevronRight,
   HelpCircle
 } from 'lucide-react'
-import type { FolderItem } from '../../../../shared/types/index'
+import type { FolderItem, VideoProgressState } from '../../../../shared/types/index'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
+const VIDEO_SAVE_INTERVAL_MS = 3000
+const RESUME_MIN_SECONDS = 2
+
 const VideoPlayer: React.FC = () => {
   const { folderPath } = useFolder()
+  const { user } = useUser()
   const { coursePath, videoPath } = useParams<{ coursePath: string; videoPath: string }>()
   const navigate = useNavigate()
   const [folderItems, setFolderItems] = useState<FolderItem[]>([])
   const [currentVideo, setCurrentVideo] = useState<FolderItem | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [progressByPath, setProgressByPath] = useState<Record<string, VideoProgressState>>({})
+  const [progressLoaded, setProgressLoaded] = useState(false)
+
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const lastSaveWallClockRef = useRef(0)
+  const lastPersistedTimeRef = useRef(0)
+  const resumeAppliedForPathRef = useRef<string | null>(null)
 
   const currentFolderPath = coursePath ? decodeURIComponent(coursePath) : folderPath || ''
   const currentVideoPath = videoPath ? decodeURIComponent(videoPath) : null
+
+  const persistProgress = useCallback(
+    async (lastPositionSec: number, completed: boolean): Promise<void> => {
+      if (!user || !currentVideo) {
+        return
+      }
+      if (!window.api?.upsertVideoProgress) {
+        return
+      }
+      const t = Math.max(0, lastPositionSec)
+      const res = await window.api.upsertVideoProgress(user.id, currentVideo.path, t, completed)
+      if (res.success) {
+        setProgressByPath((prev) => ({
+          ...prev,
+          [currentVideo.path]: { lastPositionSec: t, completed }
+        }))
+      }
+    },
+    [user, currentVideo]
+  )
+
+  const maybePersistFromPlayback = useCallback(
+    (force: boolean) => {
+      if (!user || !currentVideo) {
+        return
+      }
+      const el = videoRef.current
+      if (!el) {
+        return
+      }
+      const t = el.currentTime
+      const d = el.duration
+      if (!Number.isFinite(t)) {
+        return
+      }
+      if (Number.isFinite(d) && d > 0 && t >= d - 0.75) {
+        return
+      }
+      const p = progressByPath[currentVideo.path]
+      if (p?.completed) {
+        return
+      }
+      const now = Date.now()
+      if (!force && now - lastSaveWallClockRef.current < VIDEO_SAVE_INTERVAL_MS) {
+        return
+      }
+      if (!force && Math.abs(t - lastPersistedTimeRef.current) < 0.35) {
+        return
+      }
+      lastSaveWallClockRef.current = now
+      lastPersistedTimeRef.current = t
+      void persistProgress(t, false)
+    },
+    [user, currentVideo, progressByPath, persistProgress]
+  )
 
   useEffect(() => {
     const loadVideos = async (): Promise<void> => {
@@ -39,19 +106,14 @@ const VideoPlayer: React.FC = () => {
         }
 
         try {
-          // Determina a pasta para carregar os vídeos da sidebar
-          // Se temos um videoPath, usa o diretório pai do vídeo
-          // Caso contrário, usa o currentFolderPath
           const folderToLoad = currentVideoPath
             ? currentVideoPath.substring(0, currentVideoPath.lastIndexOf('/'))
             : currentFolderPath
 
-          // Se temos um videoPath, tenta carregar o vídeo diretamente
           if (currentVideoPath) {
             try {
               const videoName = currentVideoPath.substring(currentVideoPath.lastIndexOf('/') + 1)
 
-              // Lista o conteúdo do diretório pai do vídeo
               let parentItems: FolderItem[] = []
 
               if (folderPath && window.api.getIndexedFolder) {
@@ -65,7 +127,6 @@ const VideoPlayer: React.FC = () => {
                 parentItems = await window.api.listFolderContents(folderToLoad)
               }
 
-              // Procura o vídeo na lista
               const directVideo = parentItems.find(
                 (item) => item.path === currentVideoPath && item.type === 'video'
               )
@@ -73,7 +134,6 @@ const VideoPlayer: React.FC = () => {
               if (directVideo) {
                 setCurrentVideo(directVideo)
               } else {
-                // Se não encontrou, cria um objeto básico do vídeo
                 setCurrentVideo({
                   path: currentVideoPath,
                   name: videoName,
@@ -82,7 +142,6 @@ const VideoPlayer: React.FC = () => {
               }
             } catch (error) {
               console.error('Error loading video directly:', error)
-              // Cria um objeto básico do vídeo como fallback
               if (currentVideoPath) {
                 const videoName = currentVideoPath.substring(currentVideoPath.lastIndexOf('/') + 1)
                 setCurrentVideo({
@@ -94,10 +153,8 @@ const VideoPlayer: React.FC = () => {
             }
           }
 
-          // Carrega a lista de vídeos para a sidebar da pasta do vídeo atual
           let items: FolderItem[] = []
 
-          // Tenta primeiro buscar do banco de dados
           if (window.api.getVideosByFolderPath && folderToLoad) {
             const dbItems = await window.api.getVideosByFolderPath(folderToLoad)
             if (dbItems && dbItems.length > 0) {
@@ -105,12 +162,10 @@ const VideoPlayer: React.FC = () => {
             }
           }
 
-          // Se não encontrou no banco, tenta pelo método antigo
           if (items.length === 0 && folderPath && window.api.getIndexedFolder && folderToLoad) {
             const indexed = await window.api.getIndexedFolder(folderPath, folderToLoad)
             if (indexed && indexed.length > 0) {
               items = indexed
-              // Se os vídeos não têm duração, enriquece com duração
               const videosWithoutDuration = items.filter(
                 (item) => item.type === 'video' && !item.duration
               )
@@ -130,12 +185,10 @@ const VideoPlayer: React.FC = () => {
             }
           }
 
-          // Se ainda não encontrou, lê do sistema de arquivos com duração
           if (items.length === 0 && folderToLoad) {
             items = await window.api.listFolderContents(folderToLoad, true)
           }
 
-          // Filtra apenas os vídeos da pasta (não recursivo para a sidebar)
           const videos = items
             .filter((item) => item.type === 'video')
             .sort((a, b) =>
@@ -144,7 +197,6 @@ const VideoPlayer: React.FC = () => {
 
           setFolderItems(videos || [])
 
-          // Se temos um videoPath mas ainda não definimos o vídeo, tenta encontrá-lo na lista
           if (currentVideoPath) {
             const video = videos.find((v) => v.path === currentVideoPath)
             if (video) {
@@ -163,6 +215,74 @@ const VideoPlayer: React.FC = () => {
 
     loadVideos()
   }, [currentFolderPath, currentVideoPath, folderPath, startTransition])
+
+  useEffect(() => {
+    if (!user) {
+      setProgressByPath({})
+      setProgressLoaded(true)
+      return
+    }
+    const batchApi = window.api?.getVideoProgressBatch
+    if (!batchApi) {
+      setProgressLoaded(true)
+      return
+    }
+    const pathsFromList = folderItems.map((v) => v.path)
+    const paths =
+      currentVideoPath && !pathsFromList.includes(currentVideoPath)
+        ? [...pathsFromList, currentVideoPath]
+        : pathsFromList
+    if (paths.length === 0) {
+      setProgressByPath({})
+      setProgressLoaded(true)
+      return
+    }
+    setProgressLoaded(false)
+    void batchApi(user.id, paths).then((map) => {
+      setProgressByPath(map)
+      setProgressLoaded(true)
+    })
+  }, [user, folderItems, currentVideoPath])
+
+  useEffect(() => {
+    resumeAppliedForPathRef.current = null
+  }, [currentVideo?.path])
+
+  const applyResumePosition = useCallback(
+    (el: HTMLVideoElement): void => {
+      if (!currentVideo || !progressLoaded) {
+        return
+      }
+      if (resumeAppliedForPathRef.current === currentVideo.path) {
+        return
+      }
+      const p = progressByPath[currentVideo.path]
+      resumeAppliedForPathRef.current = currentVideo.path
+      if (p?.completed) {
+        el.currentTime = 0
+        return
+      }
+      if (p && p.lastPositionSec >= RESUME_MIN_SECONDS) {
+        const d = el.duration
+        if (d > 0) {
+          el.currentTime = Math.min(p.lastPositionSec, Math.max(0, d - 0.5))
+        } else {
+          el.currentTime = p.lastPositionSec
+        }
+      }
+    },
+    [currentVideo, progressByPath, progressLoaded]
+  )
+
+  useEffect(() => {
+    if (!progressLoaded) {
+      return
+    }
+    const el = videoRef.current
+    if (el && el.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      applyResumePosition(el)
+    }
+  }, [progressLoaded, currentVideo?.path, progressByPath, applyResumePosition])
 
   const handleVideoSelect = (video: FolderItem): void => {
     if (video.type === 'video') {
@@ -188,6 +308,50 @@ const VideoPlayer: React.FC = () => {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
     return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const currentIndex = currentVideo
+    ? folderItems.findIndex((v) => v.path === currentVideo.path)
+    : -1
+  const canGoPrev = currentIndex > 0
+  const canGoNext = currentIndex >= 0 && currentIndex < folderItems.length - 1
+
+  const handlePrev = (): void => {
+    if (canGoPrev) {
+      void persistProgress(videoRef.current?.currentTime ?? lastPersistedTimeRef.current, false)
+      handleVideoSelect(folderItems[currentIndex - 1])
+    }
+  }
+
+  const handleNext = (): void => {
+    if (canGoNext) {
+      void persistProgress(videoRef.current?.currentTime ?? lastPersistedTimeRef.current, false)
+      handleVideoSelect(folderItems[currentIndex + 1])
+    }
+  }
+
+  const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>): void => {
+    applyResumePosition(e.currentTarget)
+  }
+
+  const handleTimeUpdate = (): void => {
+    maybePersistFromPlayback(false)
+  }
+
+  const handleVideoPause = (): void => {
+    maybePersistFromPlayback(true)
+  }
+
+  const handleVideoEnded = async (): Promise<void> => {
+    if (user && currentVideo) {
+      const el = videoRef.current
+      const endTime =
+        el && Number.isFinite(el.duration) && el.duration > 0 ? el.duration : (el?.currentTime ?? 0)
+      await persistProgress(endTime, true)
+    }
+    if (currentIndex >= 0 && currentIndex < folderItems.length - 1) {
+      handleVideoSelect(folderItems[currentIndex + 1])
+    }
   }
 
   if (isPending) {
@@ -238,7 +402,11 @@ const VideoPlayer: React.FC = () => {
                 <div className="space-y-0.5">
                   {folderItems.map((video) => {
                     const isActive = currentVideo?.path === video.path
-                    const isCompleted = false // Mock status for now
+                    const p = progressByPath[video.path]
+                    const isCompleted = Boolean(p?.completed)
+                    const inProgress = Boolean(
+                      p && !p.completed && p.lastPositionSec >= RESUME_MIN_SECONDS
+                    )
 
                     return (
                       <div
@@ -256,6 +424,8 @@ const VideoPlayer: React.FC = () => {
                             <PlayCircle className="h-4 w-4 text-foreground fill-foreground/10" />
                           ) : isCompleted ? (
                             <CheckCircle2 className="h-4 w-4 text-primary" />
+                          ) : inProgress ? (
+                            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-500" />
                           ) : (
                             <Circle className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground" />
                           )}
@@ -289,7 +459,6 @@ const VideoPlayer: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 bg-background">
         <div className="flex-1 overflow-y-auto p-4">
           <div className="max-w-5xl mx-auto space-y-3">
-            {/* Header */}
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span>Module 1</span>
@@ -306,12 +475,17 @@ const VideoPlayer: React.FC = () => {
             <div className="bg-foreground rounded-lg overflow-hidden shadow-lg ring-1 ring-border aspect-video relative group">
               {currentVideo ? (
                 <video
+                  ref={videoRef}
                   key={currentVideo.path}
                   controls
                   className="w-full h-full object-contain"
                   src={`file://${currentVideo.path}`}
                   preload="metadata"
                   crossOrigin="anonymous"
+                  onLoadedMetadata={handleVideoLoadedMetadata}
+                  onTimeUpdate={handleTimeUpdate}
+                  onPause={handleVideoPause}
+                  onEnded={handleVideoEnded}
                 >
                   Your browser does not support the video tag.
                 </video>
@@ -324,11 +498,23 @@ const VideoPlayer: React.FC = () => {
 
             <div className="flex items-center justify-between py-2">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  disabled={!canGoPrev}
+                  onClick={handlePrev}
+                >
                   <ChevronLeft className="h-3.5 w-3.5" />
                   Prev
                 </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  disabled={!canGoNext}
+                  onClick={handleNext}
+                >
                   Next
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>

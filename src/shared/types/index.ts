@@ -29,6 +29,11 @@ export interface DatabaseResult {
   error?: string
 }
 
+export interface VideoProgressState {
+  lastPositionSec: number
+  completed: boolean
+}
+
 export const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'] as const
 
 export const MIN_VIDEO_SIZE_BYTES = 102400
