@@ -1,46 +1,46 @@
 # Yuno
 
-Plataforma pessoal de cursos que lê conteúdo diretamente dos grupos/canais do Telegram, com streaming local e privado.
+Yuno is a web app (React + Node.js) that turns your Telegram groups into a personal LMS-style platform — streaming videos and documents directly from Telegram in real time, with no permanent local downloads, as if it were a teaching platform.
 
-## Estrutura
+## Structure
 
 ```
 yuno/
 ├── client/   # Frontend (React + Vite + Tailwind)
 ├── server/   # Backend (Node.js + Express + GramJS)
-└── docs/     # Especificação e detalhes do projeto
+└── docs/     # Project specification and details
 ```
 
-## Pré-requisitos
+## Prerequisites
 
 - Node.js 20+
-- Credenciais da API do Telegram (`api_id` e `api_hash`) em https://my.telegram.org
+- Telegram API credentials (`api_id` and `api_hash`) from https://my.telegram.org
 
-## Configuração
+## Setup
 
-1. Instale as dependências:
+1. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Configure o servidor:
+2. Configure the server:
 
    ```bash
    cp server/.env.example server/.env
    ```
 
-   Preencha `API_ID`, `API_HASH` e demais variáveis no `.env`.
+   Fill in `API_ID`, `API_HASH`, and other variables in `.env`.
 
-## Desenvolvimento
+## Development
 
 ```bash
-# Backend e frontend juntos
+# Backend and frontend together
 npm run dev
 
-# Ou separadamente
+# Or separately
 npm run dev:server
 npm run dev:client
 ```
 
-Consulte [docs/details.md](./docs/details.md) para a especificação completa.
+See [docs/details.md](./docs/details.md) for the full specification.
