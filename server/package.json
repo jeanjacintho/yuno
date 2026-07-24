@@ -10,6 +10,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "big-integer": "^1.6.52",
     "telegram": "^2.26.22"
   },
   "devDependencies": {

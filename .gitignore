@@ -9,6 +9,7 @@ build/
 # Server local data
 server/data/
 server/.session
+server/data/progress.json
 
 # Client
 client/dist/

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type MediaItem } from '../lib/api'
+import { MediaPlayer } from './MediaPlayer'
 
 type MediaGridProps = {
   groupId: string
@@ -48,6 +49,8 @@ export function MediaGrid({ groupId, groupTitle }: MediaGridProps) {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
+  const [watchedMap, setWatchedMap] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -57,13 +60,19 @@ export function MediaGrid({ groupId, groupTitle }: MediaGridProps) {
       setError(null)
       setItems([])
       setNextOffsetId(null)
+      setSelectedItem(null)
 
       try {
-        const response = await api.dialogs.media(groupId)
+        const [mediaResponse, progressResponse] = await Promise.all([
+          api.dialogs.media(groupId),
+          api.progress.get(groupId)
+        ])
+
         if (cancelled) return
 
-        setItems(response.items)
-        setNextOffsetId(response.nextOffsetId)
+        setItems(mediaResponse.items)
+        setNextOffsetId(mediaResponse.nextOffsetId)
+        setWatchedMap(progressResponse.items)
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load media')
@@ -99,6 +108,17 @@ export function MediaGrid({ groupId, groupTitle }: MediaGridProps) {
     }
   }
 
+  async function handleWatchedChange(messageId: string, watched: boolean) {
+    setWatchedMap((current) => ({ ...current, [messageId]: watched }))
+
+    try {
+      await api.progress.set({ chatId: groupId, messageId, watched })
+    } catch (err) {
+      setWatchedMap((current) => ({ ...current, [messageId]: !watched }))
+      setError(err instanceof Error ? err.message : 'Failed to update progress')
+    }
+  }
+
   return (
     <section>
       <div className="mb-6">
@@ -123,47 +143,58 @@ export function MediaGrid({ groupId, groupTitle }: MediaGridProps) {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map((item) => (
-          <article
-            key={item.messageId}
-            className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900"
-          >
-            <div className="flex aspect-video items-center justify-center bg-slate-950">
-              {item.hasThumbnail ? (
-                <img
-                  alt=""
-                  className="h-full w-full object-cover"
-                  src={api.thumbnailUrl(groupId, item.messageId)}
-                  onError={(event) => {
-                    event.currentTarget.style.display = 'none'
-                  }}
-                />
-              ) : null}
-              {!item.hasThumbnail && (
-                <span className="text-sm uppercase tracking-wide text-slate-600">
-                  {item.type}
-                </span>
-              )}
-            </div>
+        {items.map((item) => {
+          const isWatched = Boolean(watchedMap[item.messageId])
 
-            <div className="space-y-2 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase ${typeBadgeClass(item.type)}`}
-                >
-                  {item.type}
-                </span>
-                <span className="text-xs text-slate-500">{formatDate(item.date)}</span>
+          return (
+            <button
+              key={item.messageId}
+              className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 text-left transition hover:border-violet-500/50"
+              onClick={() => setSelectedItem(item)}
+              type="button"
+            >
+              <div className="relative flex aspect-video items-center justify-center bg-slate-950">
+                {item.hasThumbnail ? (
+                  <img
+                    alt=""
+                    className="h-full w-full object-cover"
+                    src={api.thumbnailUrl(groupId, item.messageId)}
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <span className="text-sm uppercase tracking-wide text-slate-600">
+                    {item.type}
+                  </span>
+                )}
+
+                {isWatched && (
+                  <span className="absolute right-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                    Watched
+                  </span>
+                )}
               </div>
 
-              <h2 className="truncate text-sm font-medium" title={item.fileName}>
-                {item.fileName}
-              </h2>
+              <div className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase ${typeBadgeClass(item.type)}`}
+                  >
+                    {item.type}
+                  </span>
+                  <span className="text-xs text-slate-500">{formatDate(item.date)}</span>
+                </div>
 
-              <p className="text-xs text-slate-500">{formatFileSize(item.size)}</p>
-            </div>
-          </article>
-        ))}
+                <h2 className="truncate text-sm font-medium" title={item.fileName}>
+                  {item.fileName}
+                </h2>
+
+                <p className="text-xs text-slate-500">{formatFileSize(item.size)}</p>
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       {nextOffsetId && (
@@ -178,6 +209,14 @@ export function MediaGrid({ groupId, groupTitle }: MediaGridProps) {
           </button>
         </div>
       )}
+
+      <MediaPlayer
+        chatId={groupId}
+        item={selectedItem}
+        watched={selectedItem ? Boolean(watchedMap[selectedItem.messageId]) : false}
+        onClose={() => setSelectedItem(null)}
+        onWatchedChange={handleWatchedChange}
+      />
     </section>
   )
 }

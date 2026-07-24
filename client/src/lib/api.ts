@@ -84,13 +84,16 @@ export const api = {
     photoUrl: (id: string) => `${API_BASE}/dialogs/${id}/photo`
   },
   progress: {
-    get: (chatId: string) => fetch(`${API_BASE}/progress/${chatId}`),
-    set: (payload: unknown) =>
+    get: (chatId: string) =>
+      fetch(`${API_BASE}/progress/${chatId}`).then((res) =>
+        parseJson<{ items: Record<string, boolean> }>(res)
+      ),
+    set: (payload: { chatId: string; messageId: string; watched: boolean }) =>
       fetch(`${API_BASE}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-      })
+      }).then((res) => parseJson<{ ok: boolean }>(res))
   },
   streamUrl: (chatId: string, messageId: string) =>
     `${API_BASE}/stream/${chatId}/${messageId}`,
