@@ -12,3 +12,4 @@ server/.session
 
 # Client
 client/dist/
+*.tsbuildinfo

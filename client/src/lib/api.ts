@@ -12,6 +12,31 @@ export type AuthStatus = {
   user?: AuthUser
 }
 
+export type DialogType = 'group' | 'channel' | 'supergroup'
+
+export type DialogItem = {
+  id: string
+  title: string
+  type: DialogType
+  hasPhoto: boolean
+}
+
+export type MediaType = 'video' | 'pdf' | 'photo' | 'document'
+
+export type MediaItem = {
+  messageId: string
+  fileName: string
+  type: MediaType
+  size: number
+  date: number
+  hasThumbnail: boolean
+}
+
+export type MediaListResponse = {
+  items: MediaItem[]
+  nextOffsetId: number | null
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
   const data = (await response.json()) as T & { message?: string }
   if (!response.ok) {
@@ -48,9 +73,15 @@ export const api = {
       )
   },
   dialogs: {
-    list: () => fetch(`${API_BASE}/dialogs`),
+    list: () =>
+      fetch(`${API_BASE}/dialogs`).then((res) =>
+        parseJson<{ items: DialogItem[] }>(res)
+      ),
     media: (id: string, offsetId?: number) =>
-      fetch(`${API_BASE}/dialogs/${id}/media${offsetId ? `?offsetId=${offsetId}` : ''}`)
+      fetch(
+        `${API_BASE}/dialogs/${id}/media${offsetId ? `?offsetId=${offsetId}` : ''}`
+      ).then((res) => parseJson<MediaListResponse>(res)),
+    photoUrl: (id: string) => `${API_BASE}/dialogs/${id}/photo`
   },
   progress: {
     get: (chatId: string) => fetch(`${API_BASE}/progress/${chatId}`),
