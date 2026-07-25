@@ -1,7 +1,7 @@
 import bigInt from 'big-integer'
 import { Api } from 'telegram'
 import type { TelegramClient } from 'telegram'
-import type { Response } from 'express'
+import type { Request, Response } from 'express'
 
 export class MediaNotFoundError extends Error {
   constructor() {
@@ -48,6 +48,7 @@ export async function streamMessageMedia(
   chatId: string,
   messageId: number,
   range: { start: number; end: number } | null,
+  req: Request,
   res: Response
 ): Promise<void> {
   const { message, fileSize, mimeType } = await getMessageWithMedia(
@@ -56,36 +57,92 @@ export async function streamMessageMedia(
     messageId
   )
 
+  const hasKnownSize = fileSize > 0
   const start = range?.start ?? 0
-  const end = range?.end ?? fileSize - 1
-  const contentLength = end - start + 1
+  const end = range?.end ?? (hasKnownSize ? fileSize - 1 : undefined)
 
-  res.setHeader('Accept-Ranges', 'bytes')
+  let contentLength: number | undefined
+  if (end !== undefined) {
+    contentLength = end - start + 1
+  }
+
+  res.setHeader('Accept-Ranges', hasKnownSize ? 'bytes' : 'none')
   res.setHeader('Content-Type', mimeType)
-  res.setHeader('Content-Length', contentLength.toString())
 
-  if (range) {
+  if (range && hasKnownSize && end !== undefined && contentLength !== undefined) {
     res.status(206)
     res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`)
+    res.setHeader('Content-Length', contentLength.toString())
+  } else if (contentLength !== undefined) {
+    res.status(200)
+    res.setHeader('Content-Length', contentLength.toString())
   } else {
     res.status(200)
   }
 
-  const iterator = client.iterDownload({
-    file: message.media,
-    offset: bigInt(start),
-    limit: contentLength,
-    requestSize: Math.min(CHUNK_REQUEST_SIZE, contentLength),
-    msgData: [chatId, messageId]
-  })
-
-  for await (const chunk of iterator) {
-    if (!res.write(chunk)) {
-      await new Promise<void>((resolve) => res.once('drain', resolve))
-    }
+  let aborted = false
+  const onAbort = () => {
+    aborted = true
   }
 
-  res.end()
+  req.on('aborted', onAbort)
+  req.on('close', onAbort)
+  res.on('close', onAbort)
+
+  try {
+    const iterator = client.iterDownload({
+      file: message.media,
+      offset: bigInt(start),
+      limit: contentLength,
+      requestSize: Math.min(
+        CHUNK_REQUEST_SIZE,
+        contentLength ?? CHUNK_REQUEST_SIZE
+      ),
+      msgData: [chatId, messageId]
+    })
+
+    let bytesWritten = 0
+
+    for await (const chunk of iterator) {
+      if (aborted || res.writableEnded) {
+        break
+      }
+
+      let payload: Buffer = chunk
+      if (contentLength !== undefined) {
+        const remaining = contentLength - bytesWritten
+        if (remaining <= 0) {
+          break
+        }
+
+        if (payload.length > remaining) {
+          payload = payload.subarray(0, remaining)
+        }
+      }
+
+      bytesWritten += payload.length
+
+      try {
+        const canContinue = res.write(payload)
+        if (!canContinue) {
+          await new Promise<void>((resolve) => {
+            res.once('drain', resolve)
+          })
+        }
+      } catch {
+        aborted = true
+        break
+      }
+    }
+  } finally {
+    req.off('aborted', onAbort)
+    req.off('close', onAbort)
+    res.off('close', onAbort)
+
+    if (!res.writableEnded) {
+      res.end()
+    }
+  }
 }
 
 export async function getMessageThumbnail(

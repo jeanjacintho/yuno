@@ -27,7 +27,14 @@ streamRouter.get('/:chatId/:messageId', async (req, res) => {
       return
     }
 
-    await streamMessageMedia(client, req.params.chatId, messageId, parsedRange, res)
+    await streamMessageMedia(
+      client,
+      req.params.chatId,
+      messageId,
+      parsedRange,
+      req,
+      res
+    )
   } catch (error) {
     respondWithError(res, error)
   }
