@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api, type AuthUser, type DialogItem } from '../lib/api'
+import { ModeToggle } from '../components/mode-toggle'
 import { MediaGrid } from '../components/MediaGrid'
 import { Sidebar } from '../components/Sidebar'
+import { Button } from '@/components/ui/button'
 
 type HomePageProps = {
   user: AuthUser
@@ -60,19 +62,18 @@ export function HomePage({ user, onLogout }: HomePageProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-white">
-      <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <h1 className="text-xl font-semibold">Yuno</h1>
-          <p className="text-sm text-slate-400">Signed in as {displayName}</p>
+          <p className="text-sm text-muted-foreground">Signed in as {displayName}</p>
         </div>
-        <button
-          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
-          onClick={handleLogout}
-          type="button"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <Button variant="outline" onClick={handleLogout} type="button">
+            Log out
+          </Button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
