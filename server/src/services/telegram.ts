@@ -30,6 +30,7 @@ export type AuthUser = {
   firstName?: string
   lastName?: string
   username?: string
+  hasPhoto: boolean
 }
 
 let client: TelegramClient | null = null
@@ -83,7 +84,8 @@ function mapUser(me: Api.User): AuthUser {
     id: me.id.toString(),
     firstName: me.firstName,
     lastName: me.lastName,
-    username: me.username
+    username: me.username,
+    hasPhoto: Boolean(me.photo)
   }
 }
 
@@ -149,6 +151,22 @@ export async function getAuthenticatedClient(): Promise<TelegramClient> {
   }
 
   return activeClient
+}
+
+export async function getUserProfilePhoto(): Promise<Buffer | null> {
+  const activeClient = await getAuthenticatedClient()
+  const me = await activeClient.getMe()
+
+  if (!me?.photo) {
+    return null
+  }
+
+  const photo = await activeClient.downloadProfilePhoto(me, { isBig: false })
+  if (!photo || !(photo instanceof Buffer)) {
+    return null
+  }
+
+  return photo
 }
 
 export async function startAuth(phone: string): Promise<{ isCodeViaApp: boolean }> {
@@ -229,7 +247,7 @@ export async function verifyAuth(input: {
       error.errorMessage === 'SESSION_PASSWORD_NEEDED'
     ) {
       pendingAuth = { ...pendingAuth, step: 'password' }
-      return { user: { id: '' }, requiresPassword: true }
+      return { user: { id: '', hasPhoto: false }, requiresPassword: true }
     }
 
     const message =

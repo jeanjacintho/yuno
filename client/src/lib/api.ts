@@ -5,6 +5,7 @@ export type AuthUser = {
   firstName?: string
   lastName?: string
   username?: string
+  hasPhoto: boolean
 }
 
 export type AuthStatus = {
@@ -48,6 +49,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 export const api = {
   auth: {
     status: () => fetch(`${API_BASE}/auth/status`).then((res) => parseJson<AuthStatus>(res)),
+    photoUrl: () => `${API_BASE}/auth/photo`,
     start: (phone: string) =>
       fetch(`${API_BASE}/auth/start`, {
         method: 'POST',

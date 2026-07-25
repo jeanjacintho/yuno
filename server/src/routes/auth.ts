@@ -3,6 +3,7 @@ import {
   AuthError,
   ConfigError,
   getAuthStatus,
+  getUserProfilePhoto,
   logout,
   startAuth,
   verifyAuth
@@ -15,6 +16,28 @@ authRouter.get('/status', async (_req, res) => {
     const status = await getAuthStatus()
     res.json(status)
   } catch (error) {
+    res.status(500).json({ message: getErrorMessage(error) })
+  }
+})
+
+authRouter.get('/photo', async (_req, res) => {
+  try {
+    const photo = await getUserProfilePhoto()
+
+    if (!photo) {
+      res.status(404).json({ message: 'Photo not found' })
+      return
+    }
+
+    res.setHeader('Content-Type', 'image/jpeg')
+    res.setHeader('Cache-Control', 'private, max-age=3600')
+    res.send(photo)
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(401).json({ message: error.message })
+      return
+    }
+
     res.status(500).json({ message: getErrorMessage(error) })
   }
 })

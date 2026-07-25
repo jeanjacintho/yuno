@@ -3,6 +3,7 @@ import { api, type AuthUser, type DialogItem } from '../lib/api'
 import { ModeToggle } from '../components/mode-toggle'
 import { MediaGrid } from '../components/MediaGrid'
 import { Sidebar } from '../components/Sidebar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 
 type HomePageProps = {
@@ -20,6 +21,11 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     [user.firstName, user.lastName].filter(Boolean).join(' ') ||
     user.username ||
     'Telegram user'
+
+  const avatarFallback =
+    [user.firstName?.[0], user.lastName?.[0]].filter(Boolean).join('') ||
+    user.username?.slice(0, 2).toUpperCase() ||
+    'U'
 
   const selectedDialog = dialogs.find((dialog) => dialog.id === selectedGroupId)
 
@@ -70,6 +76,12 @@ export function HomePage({ user, onLogout }: HomePageProps) {
         </div>
         <div className="flex items-center gap-2">
           <ModeToggle />
+          <Avatar title={displayName}>
+            {user.hasPhoto && (
+              <AvatarImage alt={displayName} src={api.auth.photoUrl()} />
+            )}
+            <AvatarFallback>{avatarFallback}</AvatarFallback>
+          </Avatar>
           <Button variant="outline" onClick={handleLogout} type="button">
             Log out
           </Button>
