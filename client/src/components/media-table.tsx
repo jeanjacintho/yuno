@@ -289,6 +289,26 @@ export function MediaTable({ groupId }: MediaTableProps) {
     }
   }
 
+  if (selectedItem) {
+    return (
+      <div className="flex w-full flex-col gap-4">
+        {error && (
+          <p className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
+        <MediaPlayer
+          chatId={groupId}
+          item={selectedItem}
+          watched={Boolean(watchedMap[selectedItem.messageId])}
+          onBack={() => setSelectedItem(null)}
+          onWatchedChange={handleWatchedChange}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex flex-col gap-3 px-4 lg:flex-row lg:items-center lg:justify-between lg:px-0">
@@ -450,14 +470,6 @@ export function MediaTable({ groupId }: MediaTableProps) {
           </Button>
         </div>
       )}
-
-      <MediaPlayer
-        chatId={groupId}
-        item={selectedItem}
-        watched={selectedItem ? Boolean(watchedMap[selectedItem.messageId]) : false}
-        onClose={() => setSelectedItem(null)}
-        onWatchedChange={handleWatchedChange}
-      />
     </div>
   )
 }
