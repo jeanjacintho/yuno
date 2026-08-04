@@ -42,12 +42,14 @@ export async function listDialogMedia(
   const entity = await client.getEntity(chatId)
   const messages = await client.getMessages(entity, {
     limit: MEDIA_PAGE_SIZE,
-    offsetId: offsetId ?? 0
+    offsetId: offsetId ?? 0,
+    reverse: true
   })
 
   const items = messages
     .map((message) => mapMessageMedia(message))
     .filter((item): item is MediaItem => item !== null)
+    .sort((a, b) => a.date - b.date || Number(a.messageId) - Number(b.messageId))
 
   const lastMessage = messages[messages.length - 1]
   const nextOffsetId =
