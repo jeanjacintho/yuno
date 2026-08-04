@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type MediaItem } from '../lib/api'
+import { LazyImage } from './LazyImage'
 import { MediaPlayer } from './MediaPlayer'
 
 type MediaGridProps = {
@@ -155,7 +156,7 @@ export function MediaGrid({ groupId, groupTitle }: MediaGridProps) {
             >
               <div className="relative flex aspect-video items-center justify-center bg-slate-950">
                 {item.hasThumbnail ? (
-                  <img
+                  <LazyImage
                     alt=""
                     className="h-full w-full object-cover"
                     src={api.thumbnailUrl(groupId, item.messageId)}

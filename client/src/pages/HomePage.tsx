@@ -41,9 +41,6 @@ export function HomePage({ user, onLogout }: HomePageProps) {
         if (cancelled) return
 
         setDialogs(response.items)
-        if (response.items[0]) {
-          setSelectedGroupId(response.items[0].id)
-        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load groups')

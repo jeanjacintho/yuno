@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { api, type DialogItem } from '../lib/api'
+import { LazyImage } from './LazyImage'
 
 type SidebarProps = {
   dialogs: DialogItem[]
@@ -62,7 +63,7 @@ export function Sidebar({
                   type="button"
                 >
                   {dialog.hasPhoto ? (
-                    <img
+                    <LazyImage
                       alt=""
                       className="h-8 w-8 rounded-full object-cover"
                       src={api.dialogs.photoUrl(dialog.id)}
