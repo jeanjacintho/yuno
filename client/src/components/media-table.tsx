@@ -1,46 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
-  type SortingState
-} from '@tanstack/react-table'
-import {
-  ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
   CircleCheckIcon,
-  LoaderIcon,
-  PlayIcon
+  FileIcon,
+  FileTextIcon,
+  ImageIcon,
+  PlayIcon,
+  SearchIcon,
+  VideoIcon
 } from 'lucide-react'
-import { api, type MediaItem } from '@/lib/api'
+import { api, type MediaItem, type MediaType } from '@/lib/api'
 import { LazyImage } from '@/components/LazyImage'
 import { MediaPlayer } from '@/components/MediaPlayer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type MediaTableProps = {
   groupId: string
@@ -49,6 +25,8 @@ type MediaTableProps = {
 type MediaRow = MediaItem & {
   watched: boolean
 }
+
+type TypeFilter = 'all' | MediaType
 
 function formatFileSize(bytes: number): string {
   if (!bytes) return '—'
@@ -73,6 +51,119 @@ function formatDate(timestamp: number): string {
   })
 }
 
+function typeLabel(type: MediaType): string {
+  switch (type) {
+    case 'video':
+      return 'Video'
+    case 'pdf':
+      return 'PDF'
+    case 'photo':
+      return 'Photo'
+    default:
+      return 'File'
+  }
+}
+
+function TypeIcon({ type, className }: { type: MediaType; className?: string }) {
+  switch (type) {
+    case 'video':
+      return <VideoIcon className={className} />
+    case 'pdf':
+      return <FileTextIcon className={className} />
+    case 'photo':
+      return <ImageIcon className={className} />
+    default:
+      return <FileIcon className={className} />
+  }
+}
+
+function LessonSkeleton() {
+  return (
+    <div className="flex gap-4 p-4">
+      <Skeleton className="size-6 shrink-0 rounded-full" />
+      <Skeleton className="aspect-video w-36 shrink-0 rounded-lg" />
+      <div className="flex flex-1 flex-col gap-2 py-1">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    </div>
+  )
+}
+
+function LessonRow({
+  index,
+  item,
+  groupId,
+  onOpen
+}: {
+  index: number
+  item: MediaRow
+  groupId: string
+  onOpen: (item: MediaItem) => void
+}) {
+  return (
+    <button
+      className="group flex w-full items-center gap-4 border-b p-4 text-left transition-colors last:border-b-0 hover:bg-muted/50"
+      onClick={() => onOpen(item)}
+      type="button"
+    >
+      <span className="w-6 shrink-0 text-center text-sm tabular-nums text-muted-foreground">
+        {index}
+      </span>
+
+      <div className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-lg border bg-muted">
+        {item.hasThumbnail ? (
+          <LazyImage
+            alt=""
+            className="size-full object-cover transition-transform group-hover:scale-105"
+            src={api.thumbnailUrl(groupId, item.messageId)}
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+            }}
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center bg-muted">
+            <TypeIcon className="size-6 text-muted-foreground" type={item.type} />
+          </div>
+        )}
+
+        {item.type === 'video' && (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="flex size-9 items-center justify-center rounded-full bg-background/90 shadow-sm">
+              <PlayIcon className="size-4 fill-current" />
+            </span>
+          </span>
+        )}
+
+        {item.watched && (
+          <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+            <CircleCheckIcon className="size-3" />
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <p className="line-clamp-2 font-medium leading-snug">{item.fileName}</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="secondary" className="gap-1 capitalize">
+            <TypeIcon className="size-3" type={item.type} />
+            {typeLabel(item.type)}
+          </Badge>
+          <span>{formatDate(item.date)}</span>
+          {item.size > 0 && <span>{formatFileSize(item.size)}</span>}
+          {item.watched && (
+            <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400">
+              Watched
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
+  )
+}
+
 export function MediaTable({ groupId }: MediaTableProps) {
   const [items, setItems] = useState<MediaItem[]>([])
   const [nextOffsetId, setNextOffsetId] = useState<number | null>(null)
@@ -81,8 +172,8 @@ export function MediaTable({ groupId }: MediaTableProps) {
   const [error, setError] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [watchedMap, setWatchedMap] = useState<Record<string, boolean>>({})
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [query, setQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
 
   useEffect(() => {
     let cancelled = false
@@ -93,7 +184,8 @@ export function MediaTable({ groupId }: MediaTableProps) {
       setItems([])
       setNextOffsetId(null)
       setSelectedItem(null)
-      setGlobalFilter('')
+      setQuery('')
+      setTypeFilter('all')
 
       try {
         const [mediaResponse, progressResponse] = await Promise.all([
@@ -124,7 +216,7 @@ export function MediaTable({ groupId }: MediaTableProps) {
     }
   }, [groupId])
 
-  const data = useMemo<MediaRow[]>(
+  const rows = useMemo<MediaRow[]>(
     () =>
       items.map((item) => ({
         ...item,
@@ -133,133 +225,33 @@ export function MediaTable({ groupId }: MediaTableProps) {
     [items, watchedMap]
   )
 
-  const columns = useMemo<ColumnDef<MediaRow>[]>(
-    () => [
-      {
-        id: 'preview',
-        header: () => null,
-        cell: ({ row }) => (
-          <div className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-muted">
-            {row.original.hasThumbnail ? (
-              <LazyImage
-                alt=""
-                className="size-full object-cover"
-                src={api.thumbnailUrl(groupId, row.original.messageId)}
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none'
-                }}
-              />
-            ) : (
-              <span className="text-[10px] uppercase text-muted-foreground">
-                {row.original.type.slice(0, 3)}
-              </span>
-            )}
-          </div>
-        ),
-        enableSorting: false
-      },
-      {
-        accessorKey: 'fileName',
-        header: 'Lesson',
-        cell: ({ row }) => (
-          <button
-            className="max-w-md truncate text-left font-medium hover:underline"
-            onClick={() => setSelectedItem(row.original)}
-            type="button"
-          >
-            {row.original.fileName}
-          </button>
-        )
-      },
-      {
-        accessorKey: 'type',
-        header: 'Type',
-        cell: ({ row }) => (
-          <Badge variant="outline" className="px-1.5 capitalize text-muted-foreground">
-            {row.original.type}
-          </Badge>
-        )
-      },
-      {
-        accessorKey: 'date',
-        header: 'Date',
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">{formatDate(row.original.date)}</span>
-        )
-      },
-      {
-        accessorKey: 'size',
-        header: () => <div className="text-right">Size</div>,
-        cell: ({ row }) => (
-          <div className="text-right text-muted-foreground">
-            {formatFileSize(row.original.size)}
-          </div>
-        )
-      },
-      {
-        accessorKey: 'watched',
-        header: 'Status',
-        cell: ({ row }) => (
-          <Badge variant="outline" className="px-1.5 text-muted-foreground">
-            {row.original.watched ? (
-              <CircleCheckIcon className="fill-green-500 dark:fill-green-400" />
-            ) : (
-              <LoaderIcon />
-            )}
-            {row.original.watched ? 'Watched' : 'Pending'}
-          </Badge>
-        )
-      },
-      {
-        id: 'actions',
-        header: () => <div className="text-right">Actions</div>,
-        cell: ({ row }) => (
-          <div className="text-right">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSelectedItem(row.original)}
-              type="button"
-            >
-              <PlayIcon data-icon="inline-start" />
-              Open
-            </Button>
-          </div>
-        ),
-        enableSorting: false
-      }
-    ],
-    [groupId]
+  const filteredRows = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+
+    return rows.filter((item) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        item.fileName.toLowerCase().includes(normalizedQuery) ||
+        item.type.toLowerCase().includes(normalizedQuery)
+
+      const matchesType = typeFilter === 'all' || item.type === typeFilter
+
+      return matchesQuery && matchesType
+    })
+  }, [rows, query, typeFilter])
+
+  const watchedCount = useMemo(() => rows.filter((item) => item.watched).length, [rows])
+
+  const typeCounts = useMemo(
+    () => ({
+      all: rows.length,
+      video: rows.filter((item) => item.type === 'video').length,
+      pdf: rows.filter((item) => item.type === 'pdf').length,
+      photo: rows.filter((item) => item.type === 'photo').length,
+      document: rows.filter((item) => item.type === 'document').length
+    }),
+    [rows]
   )
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting,
-      globalFilter
-    },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: (row, _columnId, filterValue) => {
-      const query = String(filterValue).toLowerCase()
-      if (!query) return true
-
-      return (
-        row.original.fileName.toLowerCase().includes(query) ||
-        row.original.type.toLowerCase().includes(query)
-      )
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10
-      }
-    }
-  })
 
   async function loadMore() {
     if (!nextOffsetId || loadingMore) return
@@ -310,19 +302,48 @@ export function MediaTable({ groupId }: MediaTableProps) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-col gap-3 px-4 lg:flex-row lg:items-center lg:justify-between lg:px-0">
-        <div>
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">Lessons</h2>
           <p className="text-sm text-muted-foreground">
-            {items.length} lesson{items.length === 1 ? '' : 's'} loaded
+            {watchedCount} of {rows.length} watched
+            {nextOffsetId ? ' · more available on Telegram' : ''}
           </p>
         </div>
-        <Input
-          className="max-w-sm"
-          placeholder="Filter lessons..."
-          value={globalFilter}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-        />
+
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <Tabs
+            value={typeFilter}
+            onValueChange={(value) => setTypeFilter(value as TypeFilter)}
+          >
+            <TabsList>
+              <TabsTrigger value="all">All ({typeCounts.all})</TabsTrigger>
+              {typeCounts.video > 0 && (
+                <TabsTrigger value="video">Videos ({typeCounts.video})</TabsTrigger>
+              )}
+              {typeCounts.pdf > 0 && (
+                <TabsTrigger value="pdf">PDFs ({typeCounts.pdf})</TabsTrigger>
+              )}
+              {typeCounts.photo > 0 && (
+                <TabsTrigger value="photo">Photos ({typeCounts.photo})</TabsTrigger>
+              )}
+              {typeCounts.document > 0 && (
+                <TabsTrigger value="document">Files ({typeCounts.document})</TabsTrigger>
+              )}
+            </TabsList>
+          </Tabs>
+
+          <div className="relative w-full lg:max-w-xs">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-8"
+              placeholder="Search lessons..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -331,140 +352,44 @@ export function MediaTable({ groupId }: MediaTableProps) {
         </p>
       )}
 
-      <div className="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-muted">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
+      <div className="overflow-hidden rounded-xl border bg-card">
+        {loading ? (
+          <div className="divide-y">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <LessonSkeleton key={index} />
             ))}
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Loading lessons...
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No lessons found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          </div>
+        ) : filteredRows.length > 0 ? (
+          filteredRows.map((item, index) => (
+            <LessonRow
+              key={item.messageId}
+              groupId={groupId}
+              index={index + 1}
+              item={item}
+              onOpen={setSelectedItem}
+            />
+          ))
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
+            <p className="font-medium">No lessons found</p>
+            <p className="text-sm text-muted-foreground">
+              {query || typeFilter !== 'all'
+                ? 'Try changing the search or filter.'
+                : 'This group has no media yet.'}
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col gap-3 px-4 lg:flex-row lg:items-center lg:justify-between lg:px-0">
-        <div className="text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} lesson
-          {table.getFilteredRowModel().rows.length === 1 ? '' : 's'} shown
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              Rows per page
-            </Label>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value))
-              }}
-              items={[10, 20, 30, 50].map((pageSize) => ({
-                label: `${pageSize}`,
-                value: `${pageSize}`
-              }))}
-            >
-              <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                <SelectGroup>
-                  {[10, 20, 30, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-              type="button"
-            >
-              <ChevronsLeftIcon />
-              <span className="sr-only">First page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              type="button"
-            >
-              <ChevronLeftIcon />
-              <span className="sr-only">Previous page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              type="button"
-            >
-              <ChevronRightIcon />
-              <span className="sr-only">Next page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-              type="button"
-            >
-              <ChevronsRightIcon />
-              <span className="sr-only">Last page</span>
-            </Button>
-          </div>
-        </div>
-      </div>
+      {!loading && filteredRows.length > 0 && (
+        <p className="text-center text-sm text-muted-foreground">
+          Showing {filteredRows.length} of {rows.length} loaded lesson
+          {rows.length === 1 ? '' : 's'}
+        </p>
+      )}
 
       {nextOffsetId && (
-        <div className="flex justify-center px-4 lg:px-0">
+        <div className="flex justify-center">
           <Button disabled={loadingMore} onClick={loadMore} type="button" variant="outline">
             {loadingMore ? 'Loading...' : 'Load more from Telegram'}
           </Button>
