@@ -3,6 +3,7 @@ import express from 'express'
 import { authRouter } from './routes/auth.js'
 import { dialogsRouter } from './routes/dialogs.js'
 import { progressRouter } from './routes/progress.js'
+import { favoritesRouter } from './routes/favorites.js'
 import { streamRouter } from './routes/stream.js'
 import { thumbnailRouter } from './routes/thumbnail.js'
 import { initTelegramClient } from './services/telegram.js'
@@ -16,6 +17,7 @@ app.use('/api/dialogs', dialogsRouter)
 app.use('/api/stream', streamRouter)
 app.use('/api/thumbnail', thumbnailRouter)
 app.use('/api/progress', progressRouter)
+app.use('/api/favorites', favoritesRouter)
 
 async function start() {
   await initTelegramClient()

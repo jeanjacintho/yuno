@@ -15,9 +15,11 @@ import {
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   dialogs: DialogItem[]
+  favoriteIds: string[]
   loading?: boolean
   selectedGroupId?: string
   onSelectCourse: (groupId: string) => void
+  onToggleFavorite: (groupId: string, favorite: boolean) => void
   user: {
     name: string
     subtitle: string
@@ -29,9 +31,11 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 
 export function AppSidebar({
   dialogs,
+  favoriteIds,
   loading,
   selectedGroupId,
   onSelectCourse,
+  onToggleFavorite,
   user,
   onLogout,
   ...props
@@ -55,9 +59,11 @@ export function AppSidebar({
       <SidebarContent className="flex min-h-0 flex-1 flex-col">
         <NavCourses
           dialogs={dialogs}
+          favoriteIds={favoriteIds}
           loading={loading}
           selectedGroupId={selectedGroupId}
           onSelect={onSelectCourse}
+          onToggleFavorite={onToggleFavorite}
         />
       </SidebarContent>
 

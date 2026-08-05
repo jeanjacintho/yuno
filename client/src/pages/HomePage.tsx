@@ -12,6 +12,7 @@ type HomePageProps = {
 
 export function HomePage({ user, onLogout }: HomePageProps) {
   const [dialogs, setDialogs] = useState<DialogItem[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState<string>()
   const [loadingDialogs, setLoadingDialogs] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,10 +37,14 @@ export function HomePage({ user, onLogout }: HomePageProps) {
       setError(null)
 
       try {
-        const response = await api.dialogs.list()
+        const [dialogsResponse, favoritesResponse] = await Promise.all([
+          api.dialogs.list(),
+          api.favorites.list()
+        ])
         if (cancelled) return
 
-        setDialogs(response.items)
+        setDialogs(dialogsResponse.items)
+        setFavoriteIds(favoritesResponse.items)
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load groups')
@@ -63,6 +68,22 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     onLogout()
   }
 
+  async function handleToggleFavorite(groupId: string, favorite: boolean) {
+    const previous = favoriteIds
+
+    setFavoriteIds((current) =>
+      favorite ? [...current.filter((id) => id !== groupId), groupId] : current.filter((id) => id !== groupId)
+    )
+
+    try {
+      const response = await api.favorites.set({ dialogId: groupId, favorite })
+      setFavoriteIds(response.items)
+    } catch (err) {
+      setFavoriteIds(previous)
+      setError(err instanceof Error ? err.message : 'Failed to update favorite')
+    }
+  }
+
   return (
     <SidebarProvider
       style={
@@ -74,9 +95,11 @@ export function HomePage({ user, onLogout }: HomePageProps) {
     >
       <AppSidebar
         dialogs={dialogs}
+        favoriteIds={favoriteIds}
         loading={loadingDialogs}
         selectedGroupId={selectedGroupId}
         onSelectCourse={setSelectedGroupId}
+        onToggleFavorite={handleToggleFavorite}
         user={{
           name: displayName,
           subtitle: user.username ? `@${user.username}` : 'Telegram account',

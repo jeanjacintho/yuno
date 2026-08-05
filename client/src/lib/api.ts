@@ -97,6 +97,16 @@ export const api = {
         body: JSON.stringify(payload)
       }).then((res) => parseJson<{ ok: boolean }>(res))
   },
+  favorites: {
+    list: () =>
+      fetch(`${API_BASE}/favorites`).then((res) => parseJson<{ items: string[] }>(res)),
+    set: (payload: { dialogId: string; favorite: boolean }) =>
+      fetch(`${API_BASE}/favorites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then((res) => parseJson<{ ok: boolean; items: string[] }>(res))
+  },
   streamUrl: (chatId: string, messageId: string) =>
     `${API_BASE}/stream/${chatId}/${messageId}`,
   thumbnailUrl: (chatId: string, messageId: string) =>
